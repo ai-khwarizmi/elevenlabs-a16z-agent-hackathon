@@ -8,7 +8,7 @@ import { getStoredKeys } from '$lib/storage/keys';
 import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
 import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
-import type { Tool, ToolArgs, ToolResult } from './tool';
+import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
 
 // Interface for a todo item
 interface TodoItem {

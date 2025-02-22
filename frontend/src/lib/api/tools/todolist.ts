@@ -1,5 +1,5 @@
-import { agents } from '$lib/stores/agent.svelte';
-import { Tool, type ToolExecuteFunction } from '$lib/utils/tool';
+import { agents } from '$lib/stores/agents.svelte';
+import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
 
 /**
  * Tool for managing an agent's todo list

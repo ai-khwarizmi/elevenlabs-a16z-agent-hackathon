@@ -1,6 +1,6 @@
-import { Agent } from '$lib/utils/agent';
-import type { Tool } from '$lib/utils/tool';
-import { agents } from '$lib/stores/agent.svelte';
+import { Agent } from '$lib/utils/agent.svelte';
+import type { Tool } from '$lib/utils/tool.svelte';
+import { agents } from '$lib/stores/agents.svelte';
 import { inviteTool } from '../tools/invite_agent';
 import { todoListTool } from '../tools/todolist';
 import { messageTool } from '../tools/message_agent';

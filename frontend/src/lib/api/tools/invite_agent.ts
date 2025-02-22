@@ -1,6 +1,6 @@
-import { agents } from '$lib/stores/agent.svelte';
-import { Agent } from '$lib/utils/agent';
-import { Tool } from '$lib/utils/tool';
+import { agents } from '$lib/stores/agents.svelte';
+import { Agent } from '$lib/utils/agent.svelte';
+import { Tool } from '$lib/utils/tool.svelte';
 
 /**
  * Tool for inviting new agents to join the conversation

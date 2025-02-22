@@ -2,7 +2,7 @@
 	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
 	import { createHelperAgent } from '$lib/api/agents/helper';
 	import { getStoredKeys } from '$lib/storage/keys';
-	import { agents } from '$lib/stores/agent.svelte';
+	import { agents } from '$lib/stores/agents.svelte';
 
 	let searchQuery = $state('');
 	let isProcessing = $state(false);

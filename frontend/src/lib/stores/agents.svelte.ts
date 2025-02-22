@@ -1,4 +1,4 @@
-import type { Agent } from '$lib/utils/agent';
+import type { Agent } from '$lib/utils/agent.svelte';
 
 /**
  * Global state for all agents - using Svelte's $state for reactivity
