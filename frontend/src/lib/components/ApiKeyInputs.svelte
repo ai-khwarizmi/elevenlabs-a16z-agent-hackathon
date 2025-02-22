@@ -143,7 +143,7 @@
 {#if isCompact}
 	<button
 		onclick={expandInputs}
-		class="fixed left-4 top-4 flex items-center space-x-2 rounded-md bg-green-50 px-3 py-2 text-sm font-medium text-green-700 shadow-sm transition-all duration-200 hover:bg-green-100"
+		class="left-4 top-4 flex items-center space-x-2 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 border border-green-700/20 transition-all duration-200 hover:bg-green-100"
 	>
 		<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 			<path
