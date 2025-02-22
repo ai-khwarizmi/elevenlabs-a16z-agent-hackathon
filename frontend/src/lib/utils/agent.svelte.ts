@@ -481,6 +481,12 @@ export class Agent {
 
 	onStateChange(oldState: AgentState, newState: AgentState): void {
 		console.log('State changed from', oldState, 'to', newState);
+
+		if (newState === 'TEXT_ACTIVE') {
+			this.initiateTextChat();
+		} else {
+			console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
+		}
 	}
 
 	/**
@@ -518,14 +524,10 @@ export class Agent {
 
 	makeAgentActive(): void {
 		this.safeTransition('TEXT_ACTIVE');
-		this.initiateTextChat();
 	}
 
 	leaveCall(): void {
-		throw new Error('Not implemented');
-		//todo: we need to actually remove the agent from the call
-		// this.safeTransition('LEFT_CALL');
-		// addAiLeaveEvent({ name: this.getName(), model: 'gpt-4o' });
+		this.safeTransition('LEFT_CALL');
 	}
 
 	startWorking(): void {
