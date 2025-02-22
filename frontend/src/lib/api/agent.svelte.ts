@@ -82,6 +82,13 @@ export const agentManager = {
 	},
 
 	/**
+	 * Get an agent by ID
+	 */
+	getAgentById(id: string): Agent | undefined {
+		return agents.find((a) => a.id === id);
+	},
+
+	/**
 	 * Get all agents
 	 */
 	getAllAgents(): Agent[] {
@@ -130,6 +137,18 @@ export class Tool {
 	}
 }
 
+// Interface for a todo item
+interface TodoItem {
+	id: string;
+	title: string;
+	description: string;
+	priority: 'high' | 'medium' | 'low';
+	status: 'pending' | 'in_progress' | 'completed';
+	requestedBy?: string;
+	createdAt: Date;
+	completedAt?: Date;
+}
+
 /**
  * Class representing an AI agent with a name, personality, and set of tools
  */
@@ -143,6 +162,7 @@ export class Agent {
 	private profilePicture = $state<string | null>(null);
 
 	private openai: OpenAI;
+	private todos: TodoItem[] = [];
 
 	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
 		this.id = options?.id ?? uid();
@@ -334,5 +354,51 @@ export class Agent {
 			// If no function call, return the AI's response
 			return response.content || '';
 		}
+	}
+
+	/**
+	 * Get all todos for this agent
+	 */
+	getTodos(): TodoItem[] {
+		return this.todos;
+	}
+
+	/**
+	 * Add a new todo
+	 */
+	addTodo(todo: Omit<TodoItem, 'id' | 'createdAt' | 'status'>): TodoItem {
+		const newTodo: TodoItem = {
+			...todo,
+			id: uid(),
+			status: 'pending',
+			createdAt: new Date()
+		};
+		this.todos.push(newTodo);
+		return newTodo;
+	}
+
+	/**
+	 * Complete a todo
+	 */
+	completeTodo(todoId: string): TodoItem | null {
+		const todo = this.todos.find((t) => t.id === todoId);
+		if (todo) {
+			todo.status = 'completed';
+			todo.completedAt = new Date();
+			return todo;
+		}
+		return null;
+	}
+
+	/**
+	 * Update todo priority
+	 */
+	updateTodoPriority(todoId: string, priority: TodoItem['priority']): TodoItem | null {
+		const todo = this.todos.find((t) => t.id === todoId);
+		if (todo) {
+			todo.priority = priority;
+			return todo;
+		}
+		return null;
 	}
 }
