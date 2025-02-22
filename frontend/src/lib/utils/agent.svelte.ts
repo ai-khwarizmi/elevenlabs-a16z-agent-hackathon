@@ -1,7 +1,4 @@
-import type {
-	ChatCompletionMessageParam,
-	ChatCompletionTool
-} from 'openai/resources/chat/completions';
+import type { ChatCompletionTool } from 'openai/resources/chat/completions';
 import OpenAI from 'openai';
 import { createOpenAI } from '../api/ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
@@ -13,6 +10,7 @@ import { createVoice } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
+import type { TimestampedMessage } from '$lib/types/messages';
 
 // Interface for a todo item
 interface Todo {
@@ -26,7 +24,7 @@ interface Todo {
 	completedAt?: Date;
 }
 
-type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
+type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'TEXT_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
 interface SerializedAgent {
 	id: string;
@@ -34,7 +32,7 @@ interface SerializedAgent {
 	personality: string;
 	toolIds: string[];
 	isActive: boolean;
-	messageLog: ChatCompletionMessageParam[];
+	messageLog: TimestampedMessage[];
 	profilePicture: string | null;
 	todos: Todo[];
 	elevenLabsVoiceId: string | null;
@@ -51,13 +49,22 @@ const createAgentMachine = (initialState?: AgentState) =>
 			IDLE: {
 				on: {
 					ACTIVATE_VOICE: 'VOICE_ACTIVE',
+					ACTIVATE_TEXT: 'TEXT_ACTIVE',
 					LEAVE: 'LEFT_CALL'
 				}
 			},
 			VOICE_ACTIVE: {
 				on: {
 					GO_IDLE: 'IDLE',
-					START_WORK: 'WORKING'
+					START_WORK: 'WORKING',
+					SWITCH_TO_TEXT: 'TEXT_ACTIVE'
+				}
+			},
+			TEXT_ACTIVE: {
+				on: {
+					GO_IDLE: 'IDLE',
+					START_WORK: 'WORKING',
+					SWITCH_TO_VOICE: 'VOICE_ACTIVE'
 				}
 			},
 			LEFT_CALL: {
@@ -68,6 +75,7 @@ const createAgentMachine = (initialState?: AgentState) =>
 			WORKING: {
 				on: {
 					RETURN_TO_VOICE: 'VOICE_ACTIVE',
+					RETURN_TO_TEXT: 'TEXT_ACTIVE',
 					RAISE_HAND: 'RAISED_HAND'
 				}
 			},
@@ -88,7 +96,7 @@ export class Agent {
 	private personality: string;
 	private toolIds: string[];
 	private isActive = $state(false);
-	private messageLog = $state<ChatCompletionMessageParam[]>([]);
+	private messageLog = $state<TimestampedMessage[]>([]);
 	private profilePicture = $state<string | null>(null);
 	private todos = $state<Todo[]>([]);
 	private elevenLabsVoiceId = $state<string | null>(null);
@@ -110,7 +118,8 @@ export class Agent {
 		this.messageLog = [
 			{
 				role: 'system',
-				content: personality
+				content: personality,
+				timestamp: Date.now()
 			}
 		];
 
@@ -217,7 +226,7 @@ export class Agent {
 	/**
 	 * Get the message log
 	 */
-	getMessageLog(): ChatCompletionMessageParam[] {
+	getMessageLog(): TimestampedMessage[] {
 		return this.messageLog;
 	}
 
@@ -256,7 +265,8 @@ export class Agent {
 			...this.messageLog,
 			{
 				role: 'user',
-				content: userMessage
+				content: userMessage,
+				timestamp: Date.now()
 			}
 		];
 
@@ -271,8 +281,8 @@ export class Agent {
 
 			const response = completion.choices[0].message;
 
-			// Add AI response to log
-			this.messageLog = [...this.messageLog, response];
+			// Add AI response to log with timestamp
+			this.messageLog = [...this.messageLog, { ...response, timestamp: Date.now() }];
 
 			// If there's a function call, execute it
 			if (response.tool_calls) {
@@ -283,23 +293,21 @@ export class Agent {
 							JSON.parse(toolCall.function.arguments)
 						);
 
-						// Add tool result to message log
+						// Add tool result to message log with timestamp
 						this.messageLog = [
 							...this.messageLog,
 							{
 								role: 'tool',
 								tool_call_id: toolCall.id,
-								content: JSON.stringify(result)
+								content: JSON.stringify(result),
+								timestamp: Date.now()
 							}
 						];
 					})
 				);
-
-				// Continue the loop to get AI's response to the tool results
 				continue;
 			}
 
-			// If no function call, return the AI's response
 			return response.content || '';
 		}
 	}
@@ -470,10 +478,11 @@ export class Agent {
 	 */
 	private safeTransition(eventType: string): void {
 		const validTransitions: Record<AgentState, string[]> = {
-			IDLE: ['ACTIVATE_VOICE', 'LEAVE'],
-			VOICE_ACTIVE: ['GO_IDLE', 'START_WORK'],
+			IDLE: ['ACTIVATE_VOICE', 'ACTIVATE_TEXT', 'LEAVE'],
+			VOICE_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_TEXT'],
+			TEXT_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_VOICE'],
 			LEFT_CALL: ['GO_IDLE'],
-			WORKING: ['RETURN_TO_VOICE', 'RAISE_HAND'],
+			WORKING: ['RETURN_TO_VOICE', 'RETURN_TO_TEXT', 'RAISE_HAND'],
 			RAISED_HAND: ['RETURN_TO_WORK']
 		};
 
@@ -502,6 +511,10 @@ export class Agent {
 		this.safeTransition('ACTIVATE_VOICE');
 	}
 
+	makeTextActive(): void {
+		this.safeTransition('ACTIVATE_TEXT');
+	}
+
 	leaveCall(): void {
 		this.safeTransition('LEAVE');
 	}
@@ -518,7 +531,19 @@ export class Agent {
 		this.safeTransition('RETURN_TO_VOICE');
 	}
 
+	returnToText(): void {
+		this.safeTransition('RETURN_TO_TEXT');
+	}
+
 	returnToWork(): void {
 		this.safeTransition('RETURN_TO_WORK');
+	}
+
+	switchToText(): void {
+		this.safeTransition('SWITCH_TO_TEXT');
+	}
+
+	switchToVoice(): void {
+		this.safeTransition('SWITCH_TO_VOICE');
 	}
 }

@@ -211,8 +211,13 @@
 				<div class="mt-2 space-y-2">
 					{#each messages as message}
 						<div class="rounded-lg bg-gray-50 p-3">
-							<div class="flex items-center gap-2">
-								<span class="font-medium text-gray-900">{message.role}:</span>
+							<div class="flex flex-col gap-1">
+								<div class="flex items-center justify-between">
+									<span class="font-medium text-gray-900">{message.role}:</span>
+									<span class="text-xs text-gray-500">
+										{new Date(message.timestamp).toLocaleString()}
+									</span>
+								</div>
 								<p class="text-sm text-gray-600">{message.content}</p>
 							</div>
 						</div>
