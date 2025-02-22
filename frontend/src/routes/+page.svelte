@@ -1,13 +1,20 @@
 <script lang="ts">
 	import { getStoredKeys } from '$lib/storage/keys';
 	import { agents } from '$lib/stores/agents.svelte';
-	import AgentCard from '$lib/components/AgentCard.svelte';
+	import Logo from '$lib/components/Logo.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import HangUpIcon from '$lib/assets/icons/hangup.svg';
+	import MicIcon from '$lib/assets/icons/mic.svg';
+	import Agent from '$lib/components/Agent.svelte';
+	import ChatTranscript from '$lib/components/ChatTranscript.svelte';
 	import Timer from '$lib/components/Timer.svelte';
-
+	import SearchBar from '$lib/components/SearchBar.svelte';
+	
 	let message = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
 	let error = $state('');
+	let isTranscriptExpanded = $state(false);
 
 	let currentAgents = $derived(agents.list);
 
@@ -54,118 +61,94 @@
 	}
 </script>
 
-<div class="flex min-h-screen flex-col items-center justify-center px-4">
-	<!-- Agents Display Section -->
-	{#if currentAgents.length > 0}
-		<div class="mb-8 w-full max-w-2xl">
-			<h2 class="mb-4 text-xl font-semibold text-gray-700">
-				Active Agents ({currentAgents.length})
-			</h2>
-			<div class="space-y-4">
-				{#each currentAgents as agent}
-					<AgentCard {agent} />
-				{/each}
-			</div>
-		</div>
-	{/if}
+<svelte:head>
+	<title>Project WarRoom</title>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&display=swap"
+		rel="stylesheet"
+	/>
+</svelte:head>
 
-	<!-- Search Section -->
-	<div class="w-full max-w-2xl space-y-4">
-		<div class="mb-4 flex justify-center gap-4">
-			{#if agents.mode === 'VOICE'}
-				<div class="flex items-center gap-2 rounded-full bg-gray-100 pl-4">
-					{#if activeAgent?.getCallStartTime()}
-						<Timer startTime={activeAgent.getCallStartTime()} />
-					{/if}
-					<button
-						class={`rounded-full px-4 py-2 ${'bg-red-500 text-white'}`}
-						onclick={() => (agents.mode = 'TEXT')}
-					>
-						<span class="flex items-center gap-2">
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								class="h-5 w-5"
-								viewBox="0 0 20 20"
-								fill="currentColor"
-							>
-								<path
-									d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"
-								/>
-								<path
-									d="M16.707 3.293a1 1 0 010 1.414L15.414 6l1.293 1.293a1 1 0 01-1.414 1.414L14 7.414l-1.293 1.293a1 1 0 11-1.414-1.414L12.586 6l-1.293-1.293a1 1 0 011.414-1.414L14 4.586l1.293-1.293a1 1 0 011.414 0z"
-								/>
-							</svg>
-							Hang Up
-						</span>
-					</button>
-				</div>
-			{:else}
-				<button
-					class={`rounded-full px-4 py-2 ${'bg-green-500 text-white'}`}
-					onclick={() => (agents.mode = 'VOICE')}
-				>
-					<span class="flex items-center gap-2">
-						<svg
-							xmlns="http://www.w3.org/2000/svg"
-							class="h-5 w-5"
-							viewBox="0 0 20 20"
-							fill="currentColor"
-						>
-							<path
-								d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"
-							/>
-						</svg>
-						Voice Call
-					</span>
-				</button>
-			{/if}
-		</div>
-		<div class="relative">
-			<input
-				type="text"
-				bind:value={message}
-				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
-				placeholder="What can we help you with?"
-				onkeydown={(e) => e.key === 'Enter' && handleMessage()}
-			/>
-			<button
-				class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-				onclick={handleMessage}
-				disabled={isProcessing}
-				aria-label="Search"
-			>
-				{#if isProcessing}
-					<div
-						class="h-6 w-6 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"
-					></div>
-				{:else}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						class="h-6 w-6"
-						fill="none"
-						viewBox="0 0 24 24"
-						stroke="currentColor"
-					>
-						<path
-							stroke-linecap="round"
-							stroke-linejoin="round"
-							stroke-width="2"
-							d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+<ChatTranscript bind:isExpanded={isTranscriptExpanded} />
+
+<div class="transition-[padding] duration-300" class:pr-96={isTranscriptExpanded}>
+	<div class="min-h-screen bg-black p-8 text-white">
+		{#if currentAgents.length === 0}
+			<main class="flex min-h-[calc(100vh-200px)] items-center justify-center">
+				<div class="flex w-full max-w-3xl flex-col items-center gap-12">
+					<Logo size="large" />
+					<div class="w-full">
+						<SearchBar
+							bind:value={message}
+							onSearch={handleMessage}
+							placeholder="What can we help you with?"
 						/>
-					</svg>
-				{/if}
-			</button>
-		</div>
-
-		{#if error}
-			<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
-				{error}
+					</div>
+					<AppButton text="Hang Up" variant="destructive" icon={HangUpIcon} />
+				</div>
+			</main>
+		{:else}
+			<!-- Agents Display Section -->
+			<div class="pb-30 mx-auto mb-8 w-full max-w-4xl">
+				<h2 class="mb-4 text-xl font-semibold">
+					Active Agents ({currentAgents.length})
+				</h2>
+				<div class="grid grid-cols-3 gap-4">
+					{#each currentAgents as agent}
+						<Agent {agent} />
+					{/each}
+				</div>
 			</div>
-		{/if}
 
-		{#if response}
-			<div class="rounded-md bg-gray-50 p-4 text-gray-700">
-				{response}
+			<!-- Search and Controls Section -->
+			<div
+				class="fixed bottom-8 right-0 p-4 transition-transform duration-300"
+				class:-left-96={isTranscriptExpanded}
+				class:left-0={!isTranscriptExpanded}
+			>
+				<div class="mx-auto w-full max-w-2xl items-end space-y-4">
+					<div class="flex items-end gap-4">
+						<div class="flex-1">
+							<SearchBar
+								bind:value={message}
+								onSearch={handleMessage}
+								placeholder="What can we help you with?"
+							/>
+						</div>
+						{#if agents.mode === 'VOICE'}
+							{#if activeAgent?.getCallStartTime()}
+								<div class="absolute bottom-20 right-1/4 -translate-x-1/2">
+									<Timer startTime={activeAgent.getCallStartTime()} />
+								</div>
+							{/if}
+							<AppButton
+								text="Hang Up"
+								variant="destructive"
+								icon={HangUpIcon}
+								onClick={() => (agents.mode = 'TEXT')}
+							/>
+						{:else}
+							<AppButton
+								text="Voice Call"
+								variant="success"
+								icon={MicIcon}
+								onClick={() => (agents.mode = 'VOICE')}
+							/>
+						{/if}
+					</div>
+
+					{#if error}
+						<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+							{error}
+						</div>
+					{/if}
+
+					{#if response}
+						<div class="rounded-md bg-gray-50 p-4 text-gray-700">
+							{response}
+						</div>
+					{/if}
+				</div>
 			</div>
 		{/if}
 	</div>

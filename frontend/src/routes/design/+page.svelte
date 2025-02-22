@@ -1,7 +1,6 @@
 <script lang="ts">
 	import { getStoredKeys } from '$lib/storage/keys';
 	import { agents } from '$lib/stores/agents.svelte';
-	import SearchBar from '$lib/components/SearchBar.svelte';
 	import Logo from '$lib/components/Logo.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import HangUpIcon from '$lib/assets/icons/hangup.svg';
@@ -9,7 +8,8 @@
 	import Agent from '$lib/components/Agent.svelte';
 	import ChatTranscript from '$lib/components/ChatTranscript.svelte';
 	import Timer from '$lib/components/Timer.svelte';
-
+	import SearchBar from '$lib/components/SearchBar.svelte';
+	
 	let message = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
