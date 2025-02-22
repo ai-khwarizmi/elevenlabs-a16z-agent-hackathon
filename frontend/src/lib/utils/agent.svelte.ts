@@ -12,6 +12,7 @@ import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { agents } from '$lib/stores/agents.svelte';
+import { getGlobalChatlog, mergeMessages } from '$lib/stores/chatlog.svelte';
 
 // Interface for a todo item
 interface Todo {
@@ -170,7 +171,6 @@ const createAgentMachine = (agent: Agent) =>
 				},
 				onEnterTextActive: ({ context }) => {
 					console.log(`${context.agent.getName()} entered TEXT_ACTIVE state`);
-					context.agent.initiateTextChat();
 				},
 				onEnterWorking: ({ context }) => {
 					console.log(`${context.agent.getName()} entered WORKING state`);
@@ -330,8 +330,8 @@ export class Agent {
 	async initiateTextChat(): Promise<void> {
 		console.log('Starting text chat');
 
-		// Get the global transcript from the agents store
-		const globalTranscript = agents.getGlobalChatlog();
+		// Get the global transcript
+		const globalTranscript = getGlobalChatlog(agents.list);
 
 		// Filter out messages from this agent
 		const otherAgentMessages = globalTranscript.filter((msg) => msg.name !== this.getName());
@@ -340,35 +340,7 @@ export class Agent {
 		const systemMessage = this.messageLog[0];
 
 		// Merge messages chronologically
-		const mergedMessages = [systemMessage];
-
-		// Create arrays for comparison, excluding system message from agent log
-		const agentMessages = this.messageLog.slice(1);
-		let agentIndex = 0;
-		let otherIndex = 0;
-
-		while (agentIndex < agentMessages.length || otherIndex < otherAgentMessages.length) {
-			if (agentIndex >= agentMessages.length) {
-				// Add remaining other messages
-				mergedMessages.push(otherAgentMessages[otherIndex]);
-				otherIndex++;
-			} else if (otherIndex >= otherAgentMessages.length) {
-				// Add remaining agent messages
-				mergedMessages.push(agentMessages[agentIndex]);
-				agentIndex++;
-			} else {
-				// Compare timestamps and add the earlier message
-				if (agentMessages[agentIndex].timestamp <= otherAgentMessages[otherIndex].timestamp) {
-					mergedMessages.push(agentMessages[agentIndex]);
-					agentIndex++;
-				} else {
-					mergedMessages.push(otherAgentMessages[otherIndex]);
-					otherIndex++;
-				}
-			}
-		}
-
-		this.messageLog = mergedMessages;
+		this.messageLog = mergeMessages(systemMessage, this.messageLog.slice(1), otherAgentMessages);
 		this.chat(null);
 	}
 
@@ -642,6 +614,7 @@ export class Agent {
 
 	makeTextActive(): void {
 		this.safeTransition('ACTIVATE_TEXT');
+		this.initiateTextChat();
 	}
 
 	leaveCall(): void {

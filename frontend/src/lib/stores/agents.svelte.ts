@@ -2,6 +2,7 @@ import { Agent } from '$lib/utils/agent.svelte';
 import { uid } from 'uid';
 import { createHelperAgent } from '$lib/api/agents/helper';
 import type { TimestampedMessage } from '$lib/types/messages';
+import { getGlobalChatlog } from './chatlog.svelte';
 
 interface SerializedSession {
 	id: string;
@@ -142,15 +143,6 @@ function loadSessionAgents(sessionId: string) {
 	}
 }
 
-// Add null check to helper function
-function normalizeAgentName(name: string | null | undefined): string {
-	if (!name) return 'unknown';
-	return name
-		.replace(/[^a-zA-Z0-9_-]/g, '_') // Replace invalid chars with underscore
-		.replace(/_{2,}/g, '_') // Replace multiple underscores with single
-		.replace(/^_|_$/g, ''); // Remove leading/trailing underscores
-}
-
 export const sessions = {
 	get list() {
 		return sessionList;
@@ -274,30 +266,6 @@ export const agents = {
 	 */
 	getGlobalChatlog(): TimestampedMessage[] {
 		if (!sessions.current) return [];
-
-		const allowed_roles = ['user', 'assistant'];
-		const allMessages = sessions.current.agents.flatMap((agent) =>
-			agent
-				.getMessageLog()
-				.filter((msg) => allowed_roles.includes(msg.role) && msg.content !== null)
-				.map((msg) => ({
-					...msg,
-					name: normalizeAgentName(msg.name)
-				}))
-		);
-
-		// Deduplicate messages based on content, timestamp, and name
-		const uniqueMessages = allMessages.filter(
-			(message, index, self) =>
-				index ===
-				self.findIndex(
-					(m) =>
-						m.content === message.content &&
-						m.timestamp === message.timestamp &&
-						m.name === message.name
-				)
-		);
-
-		return uniqueMessages.sort((a, b) => a.timestamp - b.timestamp);
+		return getGlobalChatlog(sessions.current.agents);
 	}
 };
