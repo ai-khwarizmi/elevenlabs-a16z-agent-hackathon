@@ -61,7 +61,7 @@ export class Agent {
 	 * Get the prompt used to generate the agent's profile picture
 	 */
 	getProfilePrompt(): string {
-		return `Social media profile picture this person: ${this.personality}. The image should be a close-up portrait with a clean background. High quality, photorealistic, 8k, ultra detailed.`;
+		return `South Park style character portrait of: ${this.personality}. Simple flat colors, thick black outlines, oval-shaped head, small body, simple geometric shapes, paper cutout aesthetic. Close-up portrait with solid color background.`;
 	}
 
 	private async initProfilePicture(): Promise<void> {
