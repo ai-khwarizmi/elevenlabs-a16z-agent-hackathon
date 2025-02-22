@@ -30,6 +30,8 @@ jobs:
 
       - name: Build
         working-directory: frontend
+        env:
+          SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
         run: npm run build
 
       - name: Deploy to Cloudflare Workers
