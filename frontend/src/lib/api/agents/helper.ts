@@ -1,64 +1,19 @@
 import { Agent, Tool } from '../agent.svelte';
-import { agentManager } from '$lib/stores/agents';
+import { agentManager } from '$lib/stores/agents.svelte';
+import { inviteTool } from '../tools/invite_agent';
 
-/**
- * Tool for inviting new agents to join the conversation
- */
-export function createInviteTool(apiKey: string) {
-	return new Tool(
-		{
-			name: 'invite_agent',
-			description: 'Invite a new agent with specific capabilities to join the conversation',
-			parameters: {
-				type: 'object',
-				properties: {
-					name: {
-						name: 'name',
-						description: 'Name for the new agent',
-						type: 'string'
-					},
-					personality: {
-						name: 'personality',
-						description: "Detailed description of the agent's personality and capabilities",
-						type: 'string'
-					}
-				},
-				required: ['name', 'personality']
-			}
-		},
-		async (args) => {
-			const { name, personality } = args as { name: string; personality: string };
-
-			// Create a new agent with the same tools as the helper
-			const newAgent = new Agent(
-				name,
-				personality,
-				[], // New agents start with no tools
-				apiKey
-			);
-
-			// Add the agent to the global state
-			agentManager.addAgent(newAgent);
-
-			return {
-				success: true,
-				message: `Created new agent: ${name}`,
-				agentName: name
-			};
-		}
-	);
-}
+export const tools: Tool[] = [inviteTool];
 
 /**
  * Create the helper agent
  */
-export function createHelperAgent(apiKey: string): Agent {
+export function createHelperAgent(): Agent {
 	const personality = `I am a helpful AI assistant that can help coordinate and manage other AI agents. 
 I can understand user requests and invite specialized agents when needed.
 I aim to be friendly, clear, and efficient in my communication.
 When inviting new agents, I carefully consider what expertise is needed and create agents with well-defined roles.`;
 
-	const helperAgent = new Agent('Helper', personality, [createInviteTool(apiKey)], apiKey);
+	const helperAgent = new Agent('Helper', personality, tools);
 
 	// Add to global agent state
 	agentManager.addAgent(helperAgent);

@@ -3,6 +3,8 @@ import type {
 	ChatCompletionTool
 } from 'openai/resources/chat/completions';
 import OpenAI from 'openai';
+import { createOpenAI } from './ai/openai.svelte';
+import { getStoredKeys } from '$lib/storage/keys';
 
 /**
  * Interface for OpenAI-compatible function parameters
@@ -134,23 +136,24 @@ export class Agent {
 	private tools: Tool[];
 	private isActive: boolean;
 	private messageLog: ChatCompletionMessageParam[];
+
 	private openai: OpenAI;
 
-	constructor(name: string, personality: string, tools: Tool[], apiKey: string) {
+	constructor(name: string, personality: string, tools: Tool[]) {
 		this.name = name;
 		this.personality = personality;
 		this.tools = tools;
 		this.isActive = false;
-		this.openai = new OpenAI({
-			apiKey,
-			dangerouslyAllowBrowser: true // Required for browser usage
-		});
 		this.messageLog = [
 			{
 				role: 'system',
 				content: personality
 			}
 		];
+
+		// Init openai
+		const { openaiKey } = getStoredKeys();
+		this.openai = createOpenAI(openaiKey);
 	}
 
 	/**

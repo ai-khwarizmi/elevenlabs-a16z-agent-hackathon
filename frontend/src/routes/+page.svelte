@@ -2,26 +2,22 @@
 	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
 	import { createHelperAgent } from '$lib/api/agents/helper';
 	import { getStoredKeys } from '$lib/storage/keys';
-	import { agents } from '$lib/stores/agents';
+	import { agents } from '$lib/stores/agents.svelte';
 
 	let searchQuery = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
 	let error = $state('');
 	let helperAgent = $state<ReturnType<typeof createHelperAgent> | null>(null);
-	let currentAgents = $state<typeof $agents>([]);
 
-	// Track changes to the agents store
-	$effect(() => {
-		currentAgents = $agents;
-	});
+	let currentAgents = $derived(agents.list);
 
 	// Initialize helper agent when OpenAI API key is available
 	$effect(() => {
 		const { openaiKey } = getStoredKeys();
-		if (openaiKey) {
+		if (openaiKey && !helperAgent) {
 			try {
-				helperAgent = createHelperAgent(openaiKey);
+				helperAgent = createHelperAgent();
 			} catch (err) {
 				error = 'Failed to initialize helper agent';
 				console.error(err);
@@ -109,7 +105,7 @@
 				{#if isProcessing}
 					<div
 						class="h-6 w-6 animate-spin rounded-full border-2 border-gray-500 border-t-transparent"
-					/>
+					></div>
 				{:else}
 					<svg
 						xmlns="http://www.w3.org/2000/svg"

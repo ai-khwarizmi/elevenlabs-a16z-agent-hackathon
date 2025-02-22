@@ -5,7 +5,7 @@
 	let executionTime = $state(0);
 
 	$effect(() => {
-		let timeoutId: number;
+		let timeoutId: any;
 
 		function tick() {
 			const start = performance.now();
@@ -19,7 +19,7 @@
 	});
 </script>
 
-<div class="fixed top-2 right-2 font-mono text-sm">
+<div class="fixed right-2 top-2 font-mono text-sm">
 	Task took: {executionTime.toFixed(1)}ms
 </div>
 
