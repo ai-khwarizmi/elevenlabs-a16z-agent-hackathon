@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { agents } from '$lib/stores/agents.svelte';
 	import type { TimestampedMessage } from '$lib/types/messages';
+	import TextScramble from './TextScramble.svelte';
 
 	let { isExpanded = $bindable(true) } = $props();
 	let messages = $derived(agents.getGlobalChatlog());
@@ -10,6 +11,10 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
+	}
+
+	function getMessageContent(message: TimestampedMessage): string {
+		return typeof message.content === 'string' ? message.content : '';
 	}
 </script>
 
@@ -33,7 +38,7 @@
 						<div class="flex items-center justify-between">
 							<span class="font-medium text-gray-900">
 								{#if message.role === 'assistant'}
-									{message.name}
+									<TextScramble text={message.name || ''} duration={800} />
 								{:else}
 									User
 								{/if}
@@ -43,11 +48,13 @@
 							</span>
 						</div>
 						<p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">
-							{message.content}
+							<TextScramble text={getMessageContent(message)} />
 						</p>
 					</div>
 				{:else}
-					<div class="flex h-full items-center justify-center text-gray-500">No messages yet</div>
+					<div class="flex h-full items-center justify-center text-gray-500">
+						<TextScramble text="No messages yet" />
+					</div>
 				{/each}
 			</div>
 		</div>
