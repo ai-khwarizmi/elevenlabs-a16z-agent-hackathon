@@ -12,7 +12,7 @@ import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { agents } from '$lib/stores/agents.svelte';
-import { getGlobalChatlog, mergeMessages } from '$lib/stores/chatlog.svelte';
+import { getGlobalChatlog, mergeMessages, normalizeAgentName } from '$lib/stores/chatlog.svelte';
 
 // Interface for a todo item
 interface Todo {
@@ -336,6 +336,8 @@ export class Agent {
 		// Filter out messages from this agent
 		const otherAgentMessages = globalTranscript.filter((msg) => msg.name !== this.getName());
 
+		console.log('adding other agent messages to message log', otherAgentMessages);
+
 		// Get the agent's system message (first message)
 		const systemMessage = this.messageLog[0];
 
@@ -366,6 +368,7 @@ export class Agent {
 				...this.messageLog,
 				{
 					role: 'user',
+					name: 'USER',
 					content: userMessage,
 					timestamp: Date.now()
 				}
@@ -389,7 +392,7 @@ export class Agent {
 				{
 					...response,
 					timestamp: Date.now(),
-					name: this.getName()
+					name: normalizeAgentName(this.getName())
 				}
 			];
 
@@ -406,7 +409,9 @@ export class Agent {
 						this.messageLog = [
 							...this.messageLog,
 							{
+								...response,
 								role: 'tool',
+								name: normalizeAgentName(this.getName()),
 								tool_call_id: toolCall.id,
 								content: JSON.stringify(result),
 								timestamp: Date.now()

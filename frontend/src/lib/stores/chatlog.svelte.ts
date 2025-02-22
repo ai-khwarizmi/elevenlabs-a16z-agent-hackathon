@@ -1,8 +1,11 @@
 import type { TimestampedMessage } from '$lib/types/messages';
 
 // Helper function to normalize agent names
-function normalizeAgentName(name: string | null | undefined): string {
-	if (!name) return 'unknown';
+export function normalizeAgentName(name: string | null | undefined): string {
+	if (!name) {
+		console.error('Agent name is required');
+		return 'unknown';
+	}
 	return name
 		.replace(/[^a-zA-Z0-9_-]/g, '_') // Replace invalid chars with underscore
 		.replace(/_{2,}/g, '_') // Replace multiple underscores with single
