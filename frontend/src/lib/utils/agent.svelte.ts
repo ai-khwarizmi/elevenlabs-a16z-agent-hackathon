@@ -9,7 +9,6 @@ import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
 import { createVoice } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
-import { createMachine, interpret } from 'xstate';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { agents } from '$lib/stores/agents.svelte';
 import {
@@ -34,6 +33,16 @@ interface Todo {
 
 type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'TEXT_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
+// Map of valid state transitions
+const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
+	IDLE: ['IDLE', 'VOICE_ACTIVE', 'TEXT_ACTIVE', 'LEFT_CALL'],
+	VOICE_ACTIVE: ['IDLE', 'WORKING', 'TEXT_ACTIVE'],
+	TEXT_ACTIVE: ['IDLE', 'WORKING', 'VOICE_ACTIVE'],
+	LEFT_CALL: ['IDLE'],
+	WORKING: ['VOICE_ACTIVE', 'TEXT_ACTIVE', 'RAISED_HAND'],
+	RAISED_HAND: ['WORKING']
+};
+
 interface SerializedAgent {
 	id: string;
 	name: string;
@@ -45,155 +54,6 @@ interface SerializedAgent {
 	elevenLabsVoiceId: string | null;
 	state: AgentState;
 }
-
-type AgentContext = {
-	agent: Agent;
-};
-
-type AgentEvent = {
-	type: string;
-};
-
-// Create the state machine
-const createAgentMachine = (agent: Agent) =>
-	createMachine(
-		{
-			id: 'agent',
-			initial: agent.getState() || 'IDLE',
-			context: { agent } as AgentContext,
-			schemas: {
-				context: {} as AgentContext,
-				events: {} as AgentEvent
-			},
-			states: {
-				IDLE: {
-					entry: ['onEnterIdle'],
-					exit: ['onExitIdle'],
-					on: {
-						ACTIVATE_VOICE: {
-							target: 'VOICE_ACTIVE',
-							actions: ['onActivateVoice']
-						},
-						ACTIVATE_TEXT: {
-							target: 'TEXT_ACTIVE',
-							actions: ['onActivateText']
-						},
-						LEAVE: {
-							target: 'LEFT_CALL',
-							actions: ['onLeave']
-						},
-						GO_IDLE: {
-							target: 'IDLE',
-							actions: ['onGoIdle']
-						}
-					}
-				},
-				VOICE_ACTIVE: {
-					entry: ['onEnterVoiceActive'],
-					exit: ['onExitVoiceActive'],
-					on: {
-						GO_IDLE: {
-							target: 'IDLE',
-							actions: ['onGoIdle']
-						},
-						START_WORK: {
-							target: 'WORKING',
-							actions: ['onStartWork']
-						},
-						SWITCH_TO_TEXT: {
-							target: 'TEXT_ACTIVE',
-							actions: ['onSwitchToText']
-						}
-					}
-				},
-				TEXT_ACTIVE: {
-					entry: ['onEnterTextActive'],
-					exit: ['onExitTextActive'],
-					on: {
-						GO_IDLE: {
-							target: 'IDLE',
-							actions: ['onGoIdle']
-						},
-						START_WORK: {
-							target: 'WORKING',
-							actions: ['onStartWork']
-						},
-						SWITCH_TO_VOICE: {
-							target: 'VOICE_ACTIVE',
-							actions: ['onSwitchToVoice']
-						}
-					}
-				},
-				LEFT_CALL: {
-					entry: ['onEnterLeftCall'],
-					on: {
-						GO_IDLE: {
-							target: 'IDLE',
-							actions: ['onGoIdle']
-						}
-					}
-				},
-				WORKING: {
-					entry: ['onEnterWorking'],
-					exit: ['onExitWorking'],
-					on: {
-						RETURN_TO_VOICE: {
-							target: 'VOICE_ACTIVE',
-							actions: ['onReturnToVoice']
-						},
-						RETURN_TO_TEXT: {
-							target: 'TEXT_ACTIVE',
-							actions: ['onReturnToText']
-						},
-						RAISE_HAND: {
-							target: 'RAISED_HAND',
-							actions: ['onRaiseHand']
-						}
-					}
-				},
-				RAISED_HAND: {
-					entry: ['onEnterRaisedHand'],
-					on: {
-						RETURN_TO_WORK: {
-							target: 'WORKING',
-							actions: ['onReturnToWork']
-						}
-					}
-				}
-			}
-		},
-		{
-			actions: {
-				onEnterIdle: ({ context }) => {
-					console.log(`${context.agent.getName()} entered IDLE state`);
-				},
-				onExitIdle: ({ context }) => {
-					console.log(`${context.agent.getName()} exiting IDLE state`);
-				},
-				onActivateVoice: ({ context }) => {
-					console.log(`${context.agent.getName()} activating voice mode`);
-				},
-				onActivateText: ({ context }) => {
-					console.log(`${context.agent.getName()} activating text mode`);
-				},
-				onEnterVoiceActive: ({ context }) => {
-					console.log(`${context.agent.getName()} entered VOICE_ACTIVE state`);
-				},
-				onEnterTextActive: ({ context }) => {
-					console.log(`${context.agent.getName()} entered TEXT_ACTIVE state`);
-				},
-				onEnterWorking: ({ context }) => {
-					console.log(`${context.agent.getName()} entered WORKING state`);
-				},
-				onEnterLeftCall: ({ context }) => {
-					console.log(`${context.agent.getName()} entered LEFT_CALL state`);
-				},
-				onEnterRaisedHand: ({ context }) => {
-					console.log(`${context.agent.getName()} entered RAISED_HAND state`);
-				}
-			}
-		}
-	);
 
 /**
  * Class representing an AI agent with a name, personality, and set of tools
@@ -208,7 +68,6 @@ export class Agent {
 	private todos = $state<Todo[]>([]);
 	private elevenLabsVoiceId = $state<string | null>(null);
 	private state = $state<AgentState>('IDLE');
-	private stateMachine: ReturnType<typeof interpret>;
 	private openai: OpenAI | null = null;
 
 	constructor(
@@ -230,13 +89,6 @@ export class Agent {
 			}
 		];
 		this.state = options?.initialState || 'IDLE';
-
-		// Initialize state machine with the correct initial state
-		const machine = createAgentMachine(this);
-		this.stateMachine = interpret(machine).start();
-		this.stateMachine.subscribe((state) => {
-			this.state = state.value as AgentState;
-		});
 
 		// Initialize profile picture and voice
 		this.initProfilePicture();
@@ -631,78 +483,69 @@ export class Agent {
 	/**
 	 * Safely attempt a state transition, throwing an error if invalid
 	 */
-	private safeTransition(eventType: string): void {
-		const validTransitions: Record<AgentState, string[]> = {
-			IDLE: ['ACTIVATE_VOICE', 'ACTIVATE_TEXT', 'LEAVE', 'GO_IDLE'],
-			VOICE_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_TEXT'],
-			TEXT_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_VOICE'],
-			LEFT_CALL: ['GO_IDLE'],
-			WORKING: ['RETURN_TO_VOICE', 'RETURN_TO_TEXT', 'RAISE_HAND'],
-			RAISED_HAND: ['RETURN_TO_WORK']
-		};
-
+	private safeTransition(newState: AgentState): void {
 		const currentState = this.state;
-		const allowedEvents = validTransitions[currentState];
+		const allowedStates = VALID_STATE_TRANSITIONS[currentState];
 
-		if (!allowedEvents.includes(eventType)) {
+		if (!allowedStates.includes(newState)) {
 			throw new Error(
-				`Invalid transition: Cannot transition from '${currentState}' with event '${eventType}'. Valid events are: ${allowedEvents.join(
+				`Invalid transition: Cannot transition from '${currentState}' to '${newState}'. Valid states are: ${allowedStates.join(
 					', '
 				)}`
 			);
 		}
 
-		// Send a proper event object to the state machine
-		const event = { type: eventType };
-		this.stateMachine.send(event);
+		this.state = newState;
 	}
 
 	/**
 	 * State transition methods
 	 */
 	makeIdle(): void {
-		this.safeTransition('GO_IDLE');
+		this.safeTransition('IDLE');
 	}
 
 	makeVoiceActive(): void {
-		this.safeTransition('ACTIVATE_VOICE');
+		this.safeTransition('VOICE_ACTIVE');
 	}
 
-	makeTextActive(): void {
-		this.safeTransition('ACTIVATE_TEXT');
+	makeAgentActive(): void {
+		this.safeTransition('TEXT_ACTIVE');
 		this.initiateTextChat();
 	}
 
 	leaveCall(): void {
-		this.safeTransition('LEAVE');
-		addAiLeaveEvent({ name: this.getName(), model: 'gpt-4o' });
+		throw new Error('Not implemented');
+		//todo: we need to actually remove the agent from the call
+		// this.safeTransition('LEFT_CALL');
+		// addAiLeaveEvent({ name: this.getName(), model: 'gpt-4o' });
 	}
 
 	startWorking(): void {
-		this.safeTransition('START_WORK');
+		this.safeTransition('WORKING');
 	}
 
 	raiseHand(): void {
-		this.safeTransition('RAISE_HAND');
+		this.safeTransition('RAISED_HAND');
 	}
 
 	returnToVoice(): void {
-		this.safeTransition('RETURN_TO_VOICE');
+		this.safeTransition('VOICE_ACTIVE');
 	}
 
 	returnToText(): void {
-		this.safeTransition('RETURN_TO_TEXT');
+		this.safeTransition('TEXT_ACTIVE');
 	}
 
 	returnToWork(): void {
-		this.safeTransition('RETURN_TO_WORK');
+		this.safeTransition('WORKING');
 	}
 
 	switchToText(): void {
-		this.safeTransition('SWITCH_TO_TEXT');
+		this.safeTransition('TEXT_ACTIVE');
 	}
 
 	switchToVoice(): void {
-		this.safeTransition('SWITCH_TO_VOICE');
+		this.safeTransition('VOICE_ACTIVE');
 	}
 }

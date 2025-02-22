@@ -65,7 +65,7 @@ async function determineAndActivateNextAgent(
 			const selectedAgent = agentList.find((agent) => agent.id === agent_id);
 			if (selectedAgent) {
 				console.log(`Activating agent: ${selectedAgent.getName()} (${agent_id})`);
-				selectedAgent.makeTextActive();
+				selectedAgent.makeAgentActive();
 			} else {
 				console.warn(`Agent with ID ${agent_id} not found`);
 			}

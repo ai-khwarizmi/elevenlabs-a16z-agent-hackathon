@@ -1,7 +1,7 @@
 <script lang="ts">
 	const chars = '!<>-_\\/[]{}—=+*^?#________';
 	const MAX_WINDOW_SIZE = 20; // Maximum characters animating at once
-	const MIN_WINDOW_SIZE = 2; // Minimum characters animating at once
+	const MIN_WINDOW_SIZE = 1; // Minimum characters animating at once
 
 	let { text = '', duration = $bindable(800) } = $props();
 	let displayText = $state('');
