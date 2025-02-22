@@ -5,6 +5,7 @@ import type {
 import OpenAI from 'openai';
 import { createOpenAI } from './ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
+import { fal } from '@fal-ai/client';
 
 /**
  * Interface for OpenAI-compatible function parameters
@@ -136,6 +137,7 @@ export class Agent {
 	private tools: Tool[];
 	private isActive: boolean;
 	private messageLog: ChatCompletionMessageParam[];
+	private profilePicture: string | null = null;
 
 	private openai: OpenAI;
 
@@ -154,6 +156,45 @@ export class Agent {
 		// Init openai
 		const { openaiKey } = getStoredKeys();
 		this.openai = createOpenAI(openaiKey);
+	}
+
+	async init() {
+		// Get profile picture
+		this.profilePicture = await this.getProfilePicture();
+	}
+
+	async getProfilePicture(): Promise<string> {
+		try {
+			// Configure fal.ai client with the API key
+			const { falKey } = getStoredKeys();
+			fal.config({
+				credentials: falKey
+			});
+
+			// Generate a prompt based on the agent's personality
+			const basePrompt = `Social media profile picture this person: ${this.personality}. The image should be a close-up portrait with a clean background. High quality, photorealistic, 8k, ultra detailed.`;
+
+			// Call the FLUX.1 model to generate the image
+			const result = await fal.subscribe('fal-ai/flux/schnell', {
+				input: {
+					prompt: basePrompt,
+					image_size: 'square',
+					num_inference_steps: 4,
+					num_images: 1,
+					enable_safety_checker: true
+				}
+			});
+
+			// Return the URL of the generated image
+			if (result.data.images && result.data.images.length > 0) {
+				return result.data.images[0].url;
+			}
+
+			return '';
+		} catch (error) {
+			console.error('Failed to generate profile picture:', error);
+			return '';
+		}
 	}
 
 	/**
