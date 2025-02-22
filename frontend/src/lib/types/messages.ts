@@ -2,4 +2,5 @@ import type { ChatCompletionMessageParam } from 'openai/resources/chat/completio
 
 export type TimestampedMessage = ChatCompletionMessageParam & {
 	timestamp: number;
+	name?: string;
 };

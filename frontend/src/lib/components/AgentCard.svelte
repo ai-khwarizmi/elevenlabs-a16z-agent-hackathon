@@ -29,9 +29,6 @@
 			<div class="flex items-center justify-between">
 				<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
 				<div class="flex items-center gap-2">
-					<span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-						{agent.isAgentActive() ? 'Active' : 'Standby'}
-					</span>
 					<span
 						class="rounded-full px-3 py-1 text-sm font-medium"
 						class:bg-gray-100={agentState === 'IDLE'}

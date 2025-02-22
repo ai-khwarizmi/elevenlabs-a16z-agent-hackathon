@@ -1,5 +1,79 @@
 import { agents } from '../lib/stores/agents.svelte';
 import type { Agent } from '../lib/utils/agent.svelte';
+import { createOpenAI } from '$lib/api/ai/openai.svelte';
+import { getStoredKeys } from '$lib/storage/keys';
+import type { TimestampedMessage } from '$lib/types/messages';
+
+async function determineAndActivateNextAgent(
+	transcript: TimestampedMessage[],
+	agentList: Agent[]
+): Promise<void> {
+	// Create OpenAI client for GPT-4o
+	const { openaiKey } = getStoredKeys();
+	if (!openaiKey) {
+		console.warn('OpenAI API key not found');
+		return;
+	}
+	const openai = createOpenAI(openaiKey);
+
+	try {
+		console.log('Determining next agent... ' + transcript.length);
+		// Get agent descriptions with their IDs
+		const agentDescriptions = agentList
+			.map((agent) => `${agent.id}: ${agent.getMessageLog()[0]?.content || 'No description'}`)
+			.join('\n');
+
+		// Ask GPT-4o which agent should be activated
+		const completion = await openai.chat.completions.create({
+			model: 'gpt-4o',
+			messages: [
+				{
+					role: 'system',
+					content: `You are a coordinator that decides which agent should be activated based on the conversation transcript. Available agents:\n${agentDescriptions}`
+				},
+				{
+					role: 'user',
+					content: `Based on this conversation transcript, which agent should be activated next?\n\nTranscript:\n${JSON.stringify(transcript, null, 2)}`
+				}
+			],
+			tools: [
+				{
+					type: 'function',
+					function: {
+						name: 'activate_agent',
+						description: 'Activate an agent by their ID',
+						parameters: {
+							type: 'object',
+							properties: {
+								agent_id: {
+									type: 'string',
+									description: 'The ID of the agent to activate'
+								}
+							},
+							required: ['agent_id']
+						}
+					}
+				}
+			],
+			tool_choice: { type: 'function', function: { name: 'activate_agent' } }
+		});
+
+		const toolCall = completion.choices[0].message.tool_calls?.[0];
+		if (toolCall?.function.name === 'activate_agent') {
+			const { agent_id } = JSON.parse(toolCall.function.arguments);
+
+			const selectedAgent = agentList.find((agent) => agent.id === agent_id);
+			if (selectedAgent) {
+				console.log(`Activating agent: ${selectedAgent.getName()} (${agent_id})`);
+				selectedAgent.makeTextActive();
+			} else {
+				console.warn(`Agent with ID ${agent_id} not found`);
+			}
+		}
+	} catch (error) {
+		console.error('Error while determining next agent:', error);
+	}
+}
 
 async function mainLoop() {
 	while (true) {
@@ -11,6 +85,13 @@ async function mainLoop() {
 
 		if (allIdle && agentList.length > 0) {
 			console.log('All agents are currently idle');
+
+			// Get the global transcript and determine next agent
+			const transcript = agents.getGlobalChatlog();
+			await determineAndActivateNextAgent(transcript, agentList);
+
+			//wait 10 seconds before checking again
+			await new Promise((resolve) => setTimeout(resolve, 10000));
 		}
 
 		// Wait a bit before next check to avoid tight loop

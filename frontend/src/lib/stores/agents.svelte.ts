@@ -31,6 +31,27 @@ function getSessionKey(id: string): string {
  */
 let sessionList = $state<Session[]>([]);
 let currentSessionId = $state<string | null>(null);
+let saveTimeout: number | null = null;
+
+// Debounced save function
+function debouncedSave(session: Session) {
+	if (saveTimeout) {
+		clearTimeout(saveTimeout);
+	}
+
+	saveTimeout = setTimeout(() => {
+		saveSession(session);
+		saveTimeout = null;
+	}, 1000) as unknown as number;
+}
+
+// Watch for changes in the current session
+$effect(() => {
+	const currentSession = sessions.current;
+	if (currentSession) {
+		debouncedSave(currentSession);
+	}
+});
 
 // Load sessions from localStorage on initialization
 if (typeof window !== 'undefined') {
@@ -118,6 +139,15 @@ function loadSessionAgents(sessionId: string) {
 	} else {
 		session.agents = []; // Reset if no stored data
 	}
+}
+
+// Add null check to helper function
+function normalizeAgentName(name: string | null | undefined): string {
+	if (!name) return 'unknown';
+	return name
+		.replace(/[^a-zA-Z0-9_-]/g, '_') // Replace invalid chars with underscore
+		.replace(/_{2,}/g, '_') // Replace multiple underscores with single
+		.replace(/^_|_$/g, ''); // Remove leading/trailing underscores
 }
 
 export const sessions = {
@@ -244,10 +274,29 @@ export const agents = {
 	getGlobalChatlog(): TimestampedMessage[] {
 		if (!sessions.current) return [];
 
+		const allowed_roles = ['user', 'assistant'];
 		const allMessages = sessions.current.agents.flatMap((agent) =>
-			agent.getMessageLog().filter((msg) => msg.role !== 'system' && msg.role !== 'tool')
+			agent
+				.getMessageLog()
+				.filter((msg) => allowed_roles.includes(msg.role) && msg.content !== null)
+				.map((msg) => ({
+					...msg,
+					name: normalizeAgentName(msg.name)
+				}))
 		);
 
-		return allMessages.sort((a, b) => a.timestamp - b.timestamp);
+		// Deduplicate messages based on content, timestamp, and name
+		const uniqueMessages = allMessages.filter(
+			(message, index, self) =>
+				index ===
+				self.findIndex(
+					(m) =>
+						m.content === message.content &&
+						m.timestamp === message.timestamp &&
+						m.name === message.name
+				)
+		);
+
+		return uniqueMessages.sort((a, b) => a.timestamp - b.timestamp);
 	}
 };

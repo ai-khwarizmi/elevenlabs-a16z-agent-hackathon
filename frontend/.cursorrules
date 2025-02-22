@@ -928,3 +928,7 @@ With these adjusted guidelines, your AI can now generate SvelteKit 2 code accura
 
 - Prefer readable code over clever code.
 - Prefer for loops over array.map
+
+# OTHER NOTES
+
+- gpt-4o is a valid model. you do not need to correct it to gpt-4

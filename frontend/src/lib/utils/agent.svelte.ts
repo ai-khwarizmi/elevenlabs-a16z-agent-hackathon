@@ -11,6 +11,7 @@ import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
 import type { TimestampedMessage } from '$lib/types/messages';
+import { agents } from '$lib/stores/agents.svelte';
 
 // Interface for a todo item
 interface Todo {
@@ -31,7 +32,6 @@ interface SerializedAgent {
 	name: string;
 	personality: string;
 	toolIds: string[];
-	isActive: boolean;
 	messageLog: TimestampedMessage[];
 	profilePicture: string | null;
 	todos: Todo[];
@@ -39,53 +39,151 @@ interface SerializedAgent {
 	state: AgentState;
 }
 
+type AgentContext = {
+	agent: Agent;
+};
+
+type AgentEvent = {
+	type: string;
+};
+
 // Create the state machine
-const createAgentMachine = (initialState?: AgentState) =>
-	createMachine({
-		id: 'agent',
-		initial: initialState || 'IDLE',
-		context: {},
-		states: {
-			IDLE: {
-				on: {
-					ACTIVATE_VOICE: 'VOICE_ACTIVE',
-					ACTIVATE_TEXT: 'TEXT_ACTIVE',
-					LEAVE: 'LEFT_CALL'
-				}
+const createAgentMachine = (agent: Agent) =>
+	createMachine(
+		{
+			id: 'agent',
+			initial: agent.getState() || 'IDLE',
+			context: { agent } as AgentContext,
+			schemas: {
+				context: {} as AgentContext,
+				events: {} as AgentEvent
 			},
-			VOICE_ACTIVE: {
-				on: {
-					GO_IDLE: 'IDLE',
-					START_WORK: 'WORKING',
-					SWITCH_TO_TEXT: 'TEXT_ACTIVE'
+			states: {
+				IDLE: {
+					entry: ['onEnterIdle'],
+					exit: ['onExitIdle'],
+					on: {
+						ACTIVATE_VOICE: {
+							target: 'VOICE_ACTIVE',
+							actions: ['onActivateVoice']
+						},
+						ACTIVATE_TEXT: {
+							target: 'TEXT_ACTIVE',
+							actions: ['onActivateText']
+						},
+						LEAVE: {
+							target: 'LEFT_CALL',
+							actions: ['onLeave']
+						}
+					}
+				},
+				VOICE_ACTIVE: {
+					entry: ['onEnterVoiceActive'],
+					exit: ['onExitVoiceActive'],
+					on: {
+						GO_IDLE: {
+							target: 'IDLE',
+							actions: ['onGoIdle']
+						},
+						START_WORK: {
+							target: 'WORKING',
+							actions: ['onStartWork']
+						},
+						SWITCH_TO_TEXT: {
+							target: 'TEXT_ACTIVE',
+							actions: ['onSwitchToText']
+						}
+					}
+				},
+				TEXT_ACTIVE: {
+					entry: ['onEnterTextActive'],
+					exit: ['onExitTextActive'],
+					on: {
+						GO_IDLE: {
+							target: 'IDLE',
+							actions: ['onGoIdle']
+						},
+						START_WORK: {
+							target: 'WORKING',
+							actions: ['onStartWork']
+						},
+						SWITCH_TO_VOICE: {
+							target: 'VOICE_ACTIVE',
+							actions: ['onSwitchToVoice']
+						}
+					}
+				},
+				LEFT_CALL: {
+					entry: ['onEnterLeftCall'],
+					on: {
+						GO_IDLE: {
+							target: 'IDLE',
+							actions: ['onGoIdle']
+						}
+					}
+				},
+				WORKING: {
+					entry: ['onEnterWorking'],
+					exit: ['onExitWorking'],
+					on: {
+						RETURN_TO_VOICE: {
+							target: 'VOICE_ACTIVE',
+							actions: ['onReturnToVoice']
+						},
+						RETURN_TO_TEXT: {
+							target: 'TEXT_ACTIVE',
+							actions: ['onReturnToText']
+						},
+						RAISE_HAND: {
+							target: 'RAISED_HAND',
+							actions: ['onRaiseHand']
+						}
+					}
+				},
+				RAISED_HAND: {
+					entry: ['onEnterRaisedHand'],
+					on: {
+						RETURN_TO_WORK: {
+							target: 'WORKING',
+							actions: ['onReturnToWork']
+						}
+					}
 				}
-			},
-			TEXT_ACTIVE: {
-				on: {
-					GO_IDLE: 'IDLE',
-					START_WORK: 'WORKING',
-					SWITCH_TO_VOICE: 'VOICE_ACTIVE'
-				}
-			},
-			LEFT_CALL: {
-				on: {
-					GO_IDLE: 'IDLE'
-				}
-			},
-			WORKING: {
-				on: {
-					RETURN_TO_VOICE: 'VOICE_ACTIVE',
-					RETURN_TO_TEXT: 'TEXT_ACTIVE',
-					RAISE_HAND: 'RAISED_HAND'
-				}
-			},
-			RAISED_HAND: {
-				on: {
-					RETURN_TO_WORK: 'WORKING'
+			}
+		},
+		{
+			actions: {
+				onEnterIdle: ({ context }) => {
+					console.log(`${context.agent.getName()} entered IDLE state`);
+				},
+				onExitIdle: ({ context }) => {
+					console.log(`${context.agent.getName()} exiting IDLE state`);
+				},
+				onActivateVoice: ({ context }) => {
+					console.log(`${context.agent.getName()} activating voice mode`);
+				},
+				onActivateText: ({ context }) => {
+					console.log(`${context.agent.getName()} activating text mode`);
+				},
+				onEnterVoiceActive: ({ context }) => {
+					console.log(`${context.agent.getName()} entered VOICE_ACTIVE state`);
+				},
+				onEnterTextActive: ({ context }) => {
+					console.log(`${context.agent.getName()} entered TEXT_ACTIVE state`);
+					context.agent.initiateTextChat();
+				},
+				onEnterWorking: ({ context }) => {
+					console.log(`${context.agent.getName()} entered WORKING state`);
+				},
+				onEnterLeftCall: ({ context }) => {
+					console.log(`${context.agent.getName()} entered LEFT_CALL state`);
+				},
+				onEnterRaisedHand: ({ context }) => {
+					console.log(`${context.agent.getName()} entered RAISED_HAND state`);
 				}
 			}
 		}
-	});
+	);
 
 /**
  * Class representing an AI agent with a name, personality, and set of tools
@@ -95,14 +193,12 @@ export class Agent {
 	private name: string;
 	private personality: string;
 	private toolIds: string[];
-	private isActive = $state(false);
 	private messageLog = $state<TimestampedMessage[]>([]);
 	private profilePicture = $state<string | null>(null);
 	private todos = $state<Todo[]>([]);
 	private elevenLabsVoiceId = $state<string | null>(null);
 	private state = $state<AgentState>('IDLE');
 	private stateMachine: ReturnType<typeof interpret>;
-
 	private openai: OpenAI | null = null;
 
 	constructor(
@@ -122,9 +218,10 @@ export class Agent {
 				timestamp: Date.now()
 			}
 		];
+		this.state = options?.initialState || 'IDLE';
 
 		// Initialize state machine with the correct initial state
-		const machine = createAgentMachine(options?.initialState);
+		const machine = createAgentMachine(this);
 		this.stateMachine = interpret(machine).start();
 		this.stateMachine.subscribe((state) => {
 			this.state = state.value as AgentState;
@@ -230,18 +327,49 @@ export class Agent {
 		return this.messageLog;
 	}
 
-	/**
-	 * Check if the agent is currently active
-	 */
-	isAgentActive(): boolean {
-		return this.isActive;
-	}
+	async initiateTextChat(): Promise<void> {
+		console.log('Starting text chat');
 
-	/**
-	 * Set the agent's active state
-	 */
-	setActive(active: boolean): void {
-		this.isActive = active;
+		// Get the global transcript from the agents store
+		const globalTranscript = agents.getGlobalChatlog();
+
+		// Filter out messages from this agent
+		const otherAgentMessages = globalTranscript.filter((msg) => msg.name !== this.getName());
+
+		// Get the agent's system message (first message)
+		const systemMessage = this.messageLog[0];
+
+		// Merge messages chronologically
+		const mergedMessages = [systemMessage];
+
+		// Create arrays for comparison, excluding system message from agent log
+		const agentMessages = this.messageLog.slice(1);
+		let agentIndex = 0;
+		let otherIndex = 0;
+
+		while (agentIndex < agentMessages.length || otherIndex < otherAgentMessages.length) {
+			if (agentIndex >= agentMessages.length) {
+				// Add remaining other messages
+				mergedMessages.push(otherAgentMessages[otherIndex]);
+				otherIndex++;
+			} else if (otherIndex >= otherAgentMessages.length) {
+				// Add remaining agent messages
+				mergedMessages.push(agentMessages[agentIndex]);
+				agentIndex++;
+			} else {
+				// Compare timestamps and add the earlier message
+				if (agentMessages[agentIndex].timestamp <= otherAgentMessages[otherIndex].timestamp) {
+					mergedMessages.push(agentMessages[agentIndex]);
+					agentIndex++;
+				} else {
+					mergedMessages.push(otherAgentMessages[otherIndex]);
+					otherIndex++;
+				}
+			}
+		}
+
+		this.messageLog = mergedMessages;
+		this.chat(null);
 	}
 
 	/**
@@ -259,21 +387,23 @@ export class Agent {
 	 * Send a message to the agent and get its response
 	 * This function handles the entire conversation flow including tool execution
 	 */
-	async chat(userMessage: string): Promise<string> {
+	async chat(userMessage: string | null): Promise<string> {
 		// Add user message to log
-		this.messageLog = [
-			...this.messageLog,
-			{
-				role: 'user',
-				content: userMessage,
-				timestamp: Date.now()
-			}
-		];
+		if (userMessage !== null) {
+			this.messageLog = [
+				...this.messageLog,
+				{
+					role: 'user',
+					content: userMessage,
+					timestamp: Date.now()
+				}
+			];
+		}
 
 		while (true) {
 			// Get AI response
 			const completion = await this.getOpenAI().chat.completions.create({
-				model: 'gpt-4',
+				model: 'gpt-4o',
 				messages: this.messageLog,
 				tools: this.getToolDefinitions(),
 				tool_choice: 'auto'
@@ -426,7 +556,6 @@ export class Agent {
 			name: this.name,
 			personality: this.personality,
 			toolIds: this.toolIds,
-			isActive: this.isActive,
 			messageLog: this.messageLog,
 			profilePicture: this.profilePicture,
 			todos: this.todos,
@@ -445,21 +574,12 @@ export class Agent {
 				initialState: json.state
 			});
 			agent.toolIds = json.toolIds;
-			agent.isActive = json.isActive;
 			agent.messageLog = json.messageLog;
 			agent.profilePicture = json.profilePicture;
 			agent.todos = json.todos;
 			agent.elevenLabsVoiceId = json.elevenLabsVoiceId;
 
-			const requiredNonNullFields = [
-				'id',
-				'name',
-				'personality',
-				'toolIds',
-				'isActive',
-				'messageLog',
-				'todos'
-			];
+			const requiredNonNullFields = ['id', 'name', 'personality', 'toolIds', 'messageLog', 'todos'];
 			for (const key of requiredNonNullFields) {
 				if (json[key as keyof SerializedAgent] === null) {
 					throw new Error(`Required property "${key}" cannot be null`);
@@ -504,7 +624,9 @@ export class Agent {
 			);
 		}
 
-		this.stateMachine.send(eventType);
+		// Send a proper event object to the state machine
+		const event = { type: eventType };
+		this.stateMachine.send(event);
 	}
 
 	/**
