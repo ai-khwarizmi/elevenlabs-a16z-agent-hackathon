@@ -12,7 +12,13 @@ import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { agents } from '$lib/stores/agents.svelte';
-import { getGlobalChatlog, mergeMessages, normalizeAgentName } from '$lib/stores/chatlog.svelte';
+import {
+	getGlobalChatlog,
+	mergeMessages,
+	normalizeAgentName,
+	addAiJoinEvent,
+	addAiLeaveEvent
+} from '$lib/stores/chatlog.svelte';
 
 // Interface for a todo item
 interface Todo {
@@ -215,7 +221,8 @@ export class Agent {
 			{
 				role: 'system',
 				content: personality,
-				timestamp: Date.now()
+				timestamp: Date.now(),
+				name: 'system'
 			}
 		];
 		this.state = options?.initialState || 'IDLE';
@@ -376,10 +383,13 @@ export class Agent {
 		}
 
 		while (true) {
+			// Strip timestamp from messages before sending to OpenAI
+			const messagesForApi = this.messageLog.map(({ timestamp, ...msg }) => msg);
+
 			// Get AI response
 			const completion = await this.getOpenAI().chat.completions.create({
 				model: 'gpt-4o',
-				messages: this.messageLog,
+				messages: messagesForApi,
 				tools: this.getToolDefinitions(),
 				tool_choice: 'auto'
 			});
@@ -640,11 +650,17 @@ export class Agent {
 
 	makeTextActive(): void {
 		this.safeTransition('ACTIVATE_TEXT');
+		addAiJoinEvent({
+			name: this.getName(),
+			model: 'gpt-4o',
+			personality: this.getPersonality()
+		});
 		this.initiateTextChat();
 	}
 
 	leaveCall(): void {
 		this.safeTransition('LEAVE');
+		addAiLeaveEvent({ name: this.getName(), model: 'gpt-4o' });
 	}
 
 	startWorking(): void {

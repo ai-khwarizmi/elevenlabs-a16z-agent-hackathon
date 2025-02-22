@@ -2,7 +2,7 @@ import { Agent } from '$lib/utils/agent.svelte';
 import { uid } from 'uid';
 import { createChiefOfStaffAgent } from '$lib/api/agents/helper';
 import type { TimestampedMessage } from '$lib/types/messages';
-import { getGlobalChatlog } from './chatlog.svelte';
+import { getGlobalChatlog, addAiJoinEvent, addAiLeaveEvent } from './chatlog.svelte';
 
 interface SerializedSession {
 	id: string;
@@ -221,15 +221,23 @@ export const agents = {
 			sessions.current.agents.push(agent);
 			sessions.current.lastModified = new Date().toISOString();
 			saveSession(sessions.current);
+			addAiJoinEvent({
+				name: agent.getName(),
+				personality: agent.getPersonality()
+			});
 		}
 	},
 	removeAgent(name: string): void {
 		if (sessions.current) {
-			const index = sessions.current.agents.findIndex((a) => a.getName() === name);
-			if (index !== -1) {
-				sessions.current.agents.splice(index, 1);
-				sessions.current.lastModified = new Date().toISOString();
-				saveSession(sessions.current);
+			const agent = sessions.current.agents.find((a) => a.getName() === name);
+			if (agent) {
+				const index = sessions.current.agents.findIndex((a) => a.getName() === name);
+				if (index !== -1) {
+					sessions.current.agents.splice(index, 1);
+					sessions.current.lastModified = new Date().toISOString();
+					saveSession(sessions.current);
+					addAiLeaveEvent({ name: agent.getName() });
+				}
 			}
 		}
 	},

@@ -22,14 +22,17 @@ export function clearDeveloperEvents() {
 }
 
 // Helper functions for AI join/leave events
-export function addAiJoinEvent(aiName: string) {
-	const normalizedName = normalizeAgentName(aiName);
-	addDeveloperEvent(`${normalizedName} joined the conversation`);
+export function addAiJoinEvent(agent: { name: string; model?: string; personality?: string }) {
+	const normalizedName = normalizeAgentName(agent.name);
+	const modelInfo = agent.model ? ` (${agent.model})` : '';
+	const backstory = agent.personality ? `\nBackstory: ${agent.personality}` : '';
+	addDeveloperEvent(`${normalizedName}${modelInfo} joined the conversation${backstory}`);
 }
 
-export function addAiLeaveEvent(aiName: string) {
-	const normalizedName = normalizeAgentName(aiName);
-	addDeveloperEvent(`${normalizedName} left the conversation`);
+export function addAiLeaveEvent(agent: { name: string; model?: string }) {
+	const normalizedName = normalizeAgentName(agent.name);
+	const modelInfo = agent.model ? ` (${agent.model})` : '';
+	addDeveloperEvent(`${normalizedName}${modelInfo} left the conversation`);
 }
 
 // Helper function to normalize agent names
