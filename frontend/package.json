@@ -11,7 +11,9 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+		"type-check": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json",
+		"type-check:watch": "tsc --noEmit --watch & svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
@@ -42,7 +44,6 @@
 		"elevenlabs-node": "^2.0.3",
 		"idb": "^8.0.2",
 		"openai": "^4.85.3",
-		"uid": "^2.0.2",
-		"xstate": "^5.19.2"
+		"uid": "^2.0.2"
 	}
 }

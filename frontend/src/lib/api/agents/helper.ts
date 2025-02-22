@@ -4,14 +4,24 @@ import { agents } from '$lib/stores/agents.svelte';
 import { inviteTool } from '../tools/invite_agent';
 import { todoListTool } from '../tools/todolist';
 import { handOffMicTool } from '../tools/hand_off_mic';
+import { searchTool } from '../tools/search';
+import { sandboxTool } from '../tools/sandbox';
 import { registerTool } from '$lib/utils/tool-registry.svelte';
 
 // Register all base tools
 registerTool(inviteTool);
 registerTool(todoListTool);
 registerTool(handOffMicTool);
+registerTool(searchTool);
+registerTool(sandboxTool);
 
-export const agentBaseTools: Tool[] = [inviteTool, todoListTool, handOffMicTool];
+export const agentBaseTools: Tool[] = [
+	inviteTool,
+	todoListTool,
+	handOffMicTool,
+	searchTool,
+	sandboxTool
+];
 
 /**
  * Create the helper agent
