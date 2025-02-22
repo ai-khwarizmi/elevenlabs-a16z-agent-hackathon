@@ -1,6 +1,6 @@
 <script lang="ts">
-	let openaiKey = $state('');
-	let elevenLabsKey = $state('');
+	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
+
 	let searchQuery = $state('');
 
 	function handleSearch() {
@@ -9,31 +9,7 @@
 	}
 </script>
 
-<!-- API Keys Section -->
-<div class="fixed top-4 left-4 w-64 space-y-4">
-	<div class="space-y-2">
-		<label for="openai-key" class="block text-sm font-medium text-gray-700">OpenAI API Key</label>
-		<input
-			id="openai-key"
-			type="password"
-			bind:value={openaiKey}
-			class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-			placeholder="Enter OpenAI API Key"
-		/>
-	</div>
-	<div class="space-y-2">
-		<label for="elevenlabs-key" class="block text-sm font-medium text-gray-700"
-			>ElevenLabs API Key</label
-		>
-		<input
-			id="elevenlabs-key"
-			type="password"
-			bind:value={elevenLabsKey}
-			class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
-			placeholder="Enter ElevenLabs API Key"
-		/>
-	</div>
-</div>
+<ApiKeyInputs />
 
 <!-- Search Section -->
 <div class="flex min-h-screen items-center justify-center px-4">
