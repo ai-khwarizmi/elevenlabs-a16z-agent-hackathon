@@ -1,4 +1,5 @@
 import type { ChatCompletionTool } from 'openai/resources/index.mjs';
+import type { Agent } from './agent.svelte';
 
 /**
  * Interface for OpenAI-compatible function parameters
@@ -37,7 +38,7 @@ export type ToolResult = string | number | boolean | object | null;
 /**
  * Type for tool execution function
  */
-export type ToolExecuteFunction = (args: ToolArgs) => Promise<ToolResult>;
+export type ToolExecuteFunction = (args: ToolArgs, agent: Agent) => Promise<ToolResult>;
 
 /**
  * Class representing a tool that can be used by an agent
@@ -75,7 +76,7 @@ export class Tool {
 	/**
 	 * Execute the tool with the given arguments
 	 */
-	async execute(args: ToolArgs): Promise<ToolResult> {
-		return await this.executeFunction(args);
+	async execute(args: ToolArgs, agent: Agent): Promise<ToolResult> {
+		return await this.executeFunction(args, agent);
 	}
 }

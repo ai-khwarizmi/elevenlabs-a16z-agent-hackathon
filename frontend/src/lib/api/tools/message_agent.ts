@@ -2,27 +2,27 @@ import { agents } from '$lib/stores/agents.svelte';
 import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
 
 /**
- * Tool for sending messages between agents
+ * Tool for handing off control to another agent
  */
-export const messageTool = new Tool(
+export const handOffMicTool = new Tool(
 	{
-		name: 'message_agent',
-		description: 'Send a message to another agent in the conversation',
+		name: 'hand_off_mic',
+		description: 'Hand off control to another agent, optionally with a message',
 		parameters: {
 			type: 'object',
 			properties: {
 				to: {
 					name: 'to',
-					description: 'Name of the agent to send the message to',
+					description: 'Name of the agent to hand off control to',
 					type: 'string'
 				},
 				message: {
 					name: 'message',
-					description: 'Content of the message to send',
+					description: 'Optional message to pass along with the hand off',
 					type: 'string'
 				}
 			},
-			required: ['to', 'message']
+			required: ['to']
 		}
 	},
 	(async (args) => {
@@ -33,10 +33,10 @@ export const messageTool = new Tool(
 			};
 		}
 
-		if (typeof args.to !== 'string' || typeof args.message !== 'string') {
+		if (typeof args.to !== 'string') {
 			return {
 				success: false,
-				message: 'Invalid arguments'
+				message: 'Invalid arguments: "to" must be a string'
 			};
 		}
 
@@ -51,13 +51,19 @@ export const messageTool = new Tool(
 			};
 		}
 
-		// Send message to target agent by adding it to their message log
-		await targetAgent.chat(message);
+		// If a message was provided, send it to the target agent
+		if (message) {
+			await targetAgent.chat(message);
+		}
+
+		// TODO: Add logic to actually hand off control to the target agent
+		// This will need to be implemented based on your agent control system
 
 		return {
 			success: true,
-			message: `Message sent to ${to}`,
-			sentMessage: message
+			message: `Control handed off to ${to}${message ? ' with message' : ''}`,
+			targetAgent: to,
+			sentMessage: message || undefined
 		};
 	}) satisfies ToolExecuteFunction
 );

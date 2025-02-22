@@ -9,12 +9,14 @@
 	let error = $state('');
 
 	let currentAgents = $derived(agents.list);
-	let helperAgent = $derived(currentAgents.find((agent) => agent.getName() === 'Helper'));
+	let chiefOfStaffAgent = $derived(
+		currentAgents.find((agent) => agent.getName() === 'Chief of Staff')
+	);
 
 	async function handleSearch() {
 		if (!searchQuery.trim()) return;
-		if (!helperAgent) {
-			error = 'Helper agent not found. Please refresh the page.';
+		if (!chiefOfStaffAgent) {
+			error = 'Chief of Staff agent not found. Please refresh the page.';
 			return;
 		}
 
@@ -29,7 +31,7 @@
 		response = '';
 
 		try {
-			response = await helperAgent.chat(searchQuery);
+			response = await chiefOfStaffAgent.chat(searchQuery);
 		} catch (err) {
 			error = 'Failed to process your request';
 			console.error(err);

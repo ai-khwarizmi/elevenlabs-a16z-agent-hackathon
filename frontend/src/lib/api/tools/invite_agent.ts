@@ -27,7 +27,7 @@ export const inviteTool = new Tool(
 			required: ['name', 'personality']
 		}
 	},
-	async (args) => {
+	async (args, agent) => {
 		const { name, personality } = args as { name: string; personality: string };
 
 		// Create a new agent with the same tools as the helper
@@ -35,6 +35,7 @@ export const inviteTool = new Tool(
 
 		// Add the agent to the global state
 		agents.addAgent(newAgent);
+		agent.makeIdle();
 
 		return {
 			success: true,

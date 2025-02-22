@@ -352,7 +352,7 @@ export class Agent {
 		if (!tool) {
 			throw new Error(`Tool "${toolName}" not found`);
 		}
-		return await tool.execute(args);
+		return await tool.execute(args, this);
 	}
 
 	/**
@@ -464,6 +464,19 @@ export class Agent {
 	}
 
 	/**
+	 * Update a todo's priority
+	 */
+	updateTodoPriority(todoId: string, priority: 'high' | 'medium' | 'low'): Todo | null {
+		const todo = this.todos.find((t) => t.id === todoId);
+		if (todo) {
+			const updatedTodo = { ...todo, priority };
+			this.updateTodo(updatedTodo);
+			return updatedTodo;
+		}
+		return null;
+	}
+
+	/**
 	 * Get the voice description used to generate the agent's voice
 	 */
 	getVoiceDescription(): string {
@@ -541,17 +554,26 @@ export class Agent {
 	 */
 	static fromJSON(json: SerializedAgent): Agent {
 		try {
+			// Filter out any tool IDs that don't exist in the registry
+			const validToolIds = json.toolIds.filter((id) => {
+				const exists = getTool(id) !== undefined;
+				if (!exists) {
+					console.warn(`Tool with ID "${id}" not found, removing from agent ${json.name}`);
+				}
+				return exists;
+			});
+
 			const agent = new Agent(json.name, json.personality, [], {
 				id: json.id,
 				initialState: json.state
 			});
-			agent.toolIds = json.toolIds;
+			agent.toolIds = validToolIds;
 			agent.messageLog = json.messageLog;
 			agent.profilePicture = json.profilePicture;
 			agent.todos = json.todos;
 			agent.elevenLabsVoiceId = json.elevenLabsVoiceId;
 
-			const requiredNonNullFields = ['id', 'name', 'personality', 'toolIds', 'messageLog', 'todos'];
+			const requiredNonNullFields = ['id', 'name', 'personality', 'messageLog', 'todos'];
 			for (const key of requiredNonNullFields) {
 				if (json[key as keyof SerializedAgent] === null) {
 					throw new Error(`Required property "${key}" cannot be null`);

@@ -1,6 +1,6 @@
 import { Agent } from '$lib/utils/agent.svelte';
 import { uid } from 'uid';
-import { createHelperAgent } from '$lib/api/agents/helper';
+import { createChiefOfStaffAgent } from '$lib/api/agents/helper';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { getGlobalChatlog } from './chatlog.svelte';
 
@@ -77,9 +77,9 @@ if (typeof window !== 'undefined') {
 
 		try {
 			// Add helper agent to the default session
-			defaultSession.agents.push(createHelperAgent());
+			defaultSession.agents.push(createChiefOfStaffAgent());
 		} catch (error) {
-			console.warn('Failed to create helper agent:', error);
+			console.warn('Failed to create Chief of Staff agent:', error);
 		}
 
 		sessionList = [defaultSession];
@@ -147,10 +147,10 @@ export const sessions = {
 		};
 
 		try {
-			// Add helper agent to new sessions by default
-			session.agents.push(createHelperAgent());
+			// Add Chief of Staff agent to new sessions by default
+			session.agents.push(createChiefOfStaffAgent());
 		} catch (error) {
-			console.warn('Failed to create helper agent:', error);
+			console.warn('Failed to create Chief of Staff agent:', error);
 		}
 
 		sessionList.push(session);

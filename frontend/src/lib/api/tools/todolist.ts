@@ -1,4 +1,3 @@
-import { agents } from '$lib/stores/agents.svelte';
 import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
 
 /**
@@ -11,11 +10,6 @@ export const todoListTool = new Tool(
 		parameters: {
 			type: 'object',
 			properties: {
-				agentId: {
-					name: 'agentId',
-					description: 'ID of the agent to manage todos for',
-					type: 'string'
-				},
 				action: {
 					name: 'action',
 					description: 'Action to perform on todos',
@@ -52,7 +46,7 @@ export const todoListTool = new Tool(
 			required: ['action']
 		}
 	},
-	(async (args) => {
+	(async (args, agent) => {
 		if (typeof args !== 'object' || args === null) {
 			return {
 				success: false,
@@ -60,14 +54,7 @@ export const todoListTool = new Tool(
 			};
 		}
 
-		if (typeof args.agentId !== 'string') {
-			return {
-				success: false,
-				message: 'Agent ID is required'
-			};
-		}
-
-		const { agentId, action, title, description, priority, todoId, requestedBy } = args;
+		const { action, title, description, priority, todoId, requestedBy } = args;
 
 		if (typeof title !== 'string') {
 			return {
@@ -101,14 +88,6 @@ export const todoListTool = new Tool(
 			return {
 				success: false,
 				message: 'Requested by is required'
-			};
-		}
-
-		const agent = agents.getAgentById(agentId);
-		if (!agent) {
-			return {
-				success: false,
-				message: 'Agent is required'
 			};
 		}
 
