@@ -1,5 +1,4 @@
-import BrowserFS from 'browserfs';
-import type { FSModule, Stats } from 'browserfs';
+import type { FSModule, Stats, BrowserFS as BrowserFSType } from 'browserfs';
 import { sessions } from './agents.svelte';
 
 let fs = $state<FSModule | null>(null);
@@ -7,23 +6,65 @@ let initialized = $state(false);
 let error = $state<Error | null>(null);
 let currentSessionId = $state<string | null>(null);
 
+// Extend Window interface to include BrowserFS
+declare global {
+	interface Window {
+		BrowserFS?: BrowserFSType;
+	}
+}
+
+/**
+ * Ensure BrowserFS is initialized
+ */
+async function ensureBrowserFS(): Promise<BrowserFSType> {
+	if (typeof window === 'undefined') {
+		throw new Error('BrowserFS can only be initialized in browser environment');
+	}
+
+	// Wait for BrowserFS to be loaded
+	return new Promise((resolve, reject) => {
+		// If BrowserFS is already loaded, return it
+		if (window.BrowserFS) {
+			resolve(window.BrowserFS);
+			return;
+		}
+
+		// Load BrowserFS script
+		const script = document.createElement('script');
+		script.src = 'https://unpkg.com/browserfs@1.4.3/dist/browserfs.min.js';
+		script.onload = () => {
+			if (window.BrowserFS) {
+				resolve(window.BrowserFS);
+			} else {
+				reject(new Error('BrowserFS failed to load'));
+			}
+		};
+		script.onerror = () => {
+			reject(new Error('Failed to load BrowserFS script'));
+		};
+		document.head.appendChild(script);
+	});
+}
+
 /**
  * Initialize the file system for a specific session
  */
 async function init(sessionId?: string) {
-	// If no sessionId provided, use current session
-	const targetSessionId = sessionId || sessions.current?.id;
-
-	if (!targetSessionId) {
-		throw new Error('No session ID available');
-	}
-
-	// If already initialized for this session, return
-	if (initialized && currentSessionId === targetSessionId) {
-		return;
-	}
-
 	try {
+		const BrowserFS = await ensureBrowserFS();
+
+		// If no sessionId provided, use current session
+		const targetSessionId = sessionId || sessions.current?.id;
+
+		if (!targetSessionId) {
+			throw new Error('No session ID available');
+		}
+
+		// If already initialized for this session, return
+		if (initialized && currentSessionId === targetSessionId) {
+			return;
+		}
+
 		await new Promise((resolve, reject) => {
 			BrowserFS.configure(
 				{
