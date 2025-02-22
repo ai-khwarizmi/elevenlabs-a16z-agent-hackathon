@@ -112,6 +112,7 @@
 
 {#snippet agentCard(agent: Agent)}
 	{@const messages = agent.getMessageLog()}
+	{@const state = agent.getState()}
 	<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
 		<div class="flex items-center gap-4">
 			{#if agent.getProfilePicture()}
@@ -128,9 +129,26 @@
 			<div class="flex-1">
 				<div class="flex items-center justify-between">
 					<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
-					<span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-						{agent.isAgentActive() ? 'Active' : 'Standby'}
-					</span>
+					<div class="flex items-center gap-2">
+						<span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
+							{agent.isAgentActive() ? 'Active' : 'Standby'}
+						</span>
+						<span
+							class="rounded-full px-3 py-1 text-sm font-medium"
+							class:bg-gray-100={state === 'IDLE'}
+							class:text-gray-800={state === 'IDLE'}
+							class:bg-blue-100={state === 'VOICE_ACTIVE'}
+							class:text-blue-800={state === 'VOICE_ACTIVE'}
+							class:bg-red-100={state === 'LEFT_CALL'}
+							class:text-red-800={state === 'LEFT_CALL'}
+							class:bg-yellow-100={state === 'WORKING'}
+							class:text-yellow-800={state === 'WORKING'}
+							class:bg-purple-100={state === 'RAISED_HAND'}
+							class:text-purple-800={state === 'RAISED_HAND'}
+						>
+							{state}
+						</span>
+					</div>
 				</div>
 				<p class="mt-2 text-sm text-gray-600">{agent.getPersonality()}</p>
 			</div>
