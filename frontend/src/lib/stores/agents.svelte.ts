@@ -2,7 +2,7 @@ import { Agent } from '$lib/utils/agent.svelte';
 import { uid } from 'uid';
 import { createChiefOfStaffAgent } from '$lib/api/agents/helper';
 import type { TimestampedMessage } from '$lib/types/messages';
-import { getGlobalChatlog, addAiJoinEvent, addAiLeaveEvent } from './chatlog.svelte';
+import { getGlobalChatlog, addAiLeaveEvent, clearDeveloperEvents } from './chatlog.svelte';
 
 interface SerializedSession {
 	id: string;
@@ -138,6 +138,9 @@ export const sessions = {
 		return sessionList.find((s) => s.id === currentSessionId);
 	},
 	createSession(name: string): Session {
+		// Clear developer events when creating a new session
+		clearDeveloperEvents();
+
 		const session: Session = {
 			id: uid(),
 			name,

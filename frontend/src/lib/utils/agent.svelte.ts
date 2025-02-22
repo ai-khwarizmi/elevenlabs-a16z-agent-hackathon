@@ -81,6 +81,10 @@ const createAgentMachine = (agent: Agent) =>
 						LEAVE: {
 							target: 'LEFT_CALL',
 							actions: ['onLeave']
+						},
+						GO_IDLE: {
+							target: 'IDLE',
+							actions: ['onGoIdle']
 						}
 					}
 				},
@@ -629,7 +633,7 @@ export class Agent {
 	 */
 	private safeTransition(eventType: string): void {
 		const validTransitions: Record<AgentState, string[]> = {
-			IDLE: ['ACTIVATE_VOICE', 'ACTIVATE_TEXT', 'LEAVE'],
+			IDLE: ['ACTIVATE_VOICE', 'ACTIVATE_TEXT', 'LEAVE', 'GO_IDLE'],
 			VOICE_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_TEXT'],
 			TEXT_ACTIVE: ['GO_IDLE', 'START_WORK', 'SWITCH_TO_VOICE'],
 			LEFT_CALL: ['GO_IDLE'],
