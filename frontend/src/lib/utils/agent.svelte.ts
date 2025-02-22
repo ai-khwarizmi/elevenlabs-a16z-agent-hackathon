@@ -30,7 +30,7 @@ interface Todo {
 	completedAt?: Date;
 }
 
-type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'TEXT_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
+export type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'TEXT_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
 // Map of valid state transitions
 const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
