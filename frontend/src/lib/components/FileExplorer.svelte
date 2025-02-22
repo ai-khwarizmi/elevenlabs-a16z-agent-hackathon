@@ -102,7 +102,18 @@
 			isLoading = true;
 			const stats = await filesystem.stat(path);
 			if (stats.isFile()) {
-				fileContent = await filesystem.readFile(path);
+				const content = await filesystem.readFile(path);
+				// Wrap the content with HTML that includes dark theme styling
+				fileContent = `
+					<style>
+						body {
+							color: white;
+							background: black;
+							font-family: system-ui, -apple-system, sans-serif;
+							margin: 1rem;
+						}
+					</style>
+					${content}`;
 				selectedFile = path;
 			} else {
 				await loadFiles(path);
@@ -136,10 +147,18 @@
 
 {#if hasFiles}
 	<div
-		class="fixed bottom-0 left-0 z-50 flex h-64 transition-transform duration-300 text-white"
+		class="fixed bottom-2 left-2 z-50 flex h-64 transition-transform duration-300 text-white border border-white"
 		class:translate-y-0={isExpanded}
-		class:translate-y-64={!isExpanded}
+		class:translate-y-68={!isExpanded}
 	>
+		{#if !isExpanded}
+			<button
+				class="absolute -top-16 left-4 bg-black border border-white text-white px-3 py-2 text-sm font-['Anonymous_Pro'] hover:border-[#FF6222] transition-all duration-200"
+				onclick={() => (isExpanded = true)}
+			>
+				Show Files
+			</button>
+		{/if}
 		<div class="flex h-full w-[800px] flex-col bg-black shadow-lg">
 			<!-- Header -->
 			<div class="flex items-center justify-between border-b border-white bg-black p-2">
@@ -276,7 +295,7 @@
 					{#if selectedFile && fileContent !== null}
 						<iframe
 							title="File Preview"
-							class="h-full w-full rounded border border-white"
+							class="h-full w-full rounded border  text-white border-white"
 							srcdoc={fileContent}
 						/>
 					{:else}

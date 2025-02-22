@@ -138,6 +138,10 @@
 	function expandInputs() {
 		isCompact = false;
 	}
+
+	function closeInputs() {
+		isCompact = true;
+	}
 </script>
 
 {#if isCompact}
@@ -155,9 +159,17 @@
 		<span>API Keys Ready</span>
 	</button>
 {:else}
-	<div class="fixed left-4 top-4 w-64 space-y-4">
+	<div class="fixed bg-black border border-white text-white p-8 left-4 top-4 w-64 space-y-4">
+		<div class="flex justify-end">
+			<button
+			onclick={closeInputs}
+			class="left-4 top-4 flex items-center space-x-2 bg-black px-3 py-2 text-sm font-medium text-white border border-white/20 transition-all duration-200 hover:bg-white/10"
+		>
+			Close
+		</button>
+		</div>
 		<div class="space-y-2">
-			<label for="openai-key" class="block text-sm font-medium text-gray-700">OpenAI API Key</label>
+			<label for="openai-key" class="block text-sm font-medium text-white">OpenAI API Key</label>
 			<div class="relative">
 				<input
 					id="openai-key"
@@ -165,7 +177,7 @@
 					bind:value={openaiKey}
 					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {openAIError
 						? 'border-red-500'
-						: ''} {isOpenAIValid ? 'border-green-500 bg-green-50' : ''}"
+						: ''} {isOpenAIValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter OpenAI API Key"
 				/>
 				{#if isValidatingOpenAI}
@@ -198,7 +210,7 @@
 			</div>
 		</div>
 		<div class="space-y-2">
-			<label for="elevenlabs-key" class="block text-sm font-medium text-gray-700"
+			<label for="elevenlabs-key" class="block text-sm font-medium text-white"
 				>ElevenLabs API Key</label
 			>
 			<div class="relative">
@@ -208,7 +220,7 @@
 					bind:value={elevenLabsKey}
 					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {elevenLabsError
 						? 'border-red-500'
-						: ''} {isElevenLabsValid ? 'border-green-500 bg-green-50' : ''}"
+						: ''} {isElevenLabsValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter ElevenLabs API Key"
 				/>
 				{#if isValidatingElevenLabs}
@@ -241,7 +253,7 @@
 			</div>
 		</div>
 		<div class="space-y-2">
-			<label for="fal-key" class="block text-sm font-medium text-gray-700">FAL API Key</label>
+			<label for="fal-key" class="block text-sm font-medium text-white">FAL API Key</label>
 			<div class="relative">
 				<input
 					id="fal-key"
@@ -249,7 +261,7 @@
 					bind:value={falKey}
 					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {falError
 						? 'border-red-500'
-						: ''} {isFalValid ? 'border-green-500 bg-green-50' : ''}"
+						: ''} {isFalValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter FAL API Key"
 				/>
 				{#if isValidatingFal}

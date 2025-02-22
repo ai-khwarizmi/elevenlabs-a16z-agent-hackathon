@@ -13,6 +13,7 @@
 	let message = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
+	let responseAgentName = $state('');
 	let error = $state('');
 	let isTranscriptExpanded = $state(false);
 
@@ -26,6 +27,9 @@
 
 	async function handleMessage() {
 		if (!message.trim()) return;
+
+		response = message;
+		responseAgentName = 'User';
 
 		const messageCopy = message.trim();
 		message = '';
@@ -48,11 +52,12 @@
 
 		isProcessing = true;
 		error = '';
-		response = '';
 
 		try {
 			response = await agent.chat(messageCopy);
+			responseAgentName = agent.getName();
 		} catch (err) {
+			message = '';
 			error = 'Failed to process your request';
 			console.error(err);
 		} finally {
@@ -84,7 +89,6 @@
 							placeholder="What can we help you with?"
 						/>
 					</div>
-					<AppButton text="Hang Up" variant="destructive" icon={HangUpIcon} />
 				</div>
 			</main>
 		{:else}
@@ -102,11 +106,23 @@
 
 			<!-- Search and Controls Section -->
 			<div
-				class="fixed bottom-8 right-0 p-4 transition-transform duration-300"
+				class="fixed bottom-4 right-0 p-4 transition-transform duration-300"
 				class:-left-96={isTranscriptExpanded}
 				class:left-0={!isTranscriptExpanded}
 			>
 				<div class="mx-auto w-full max-w-2xl items-end space-y-4">
+					{#if response}
+						<div class="bg-black border border-white p-4 text-white">
+							<h3 class="text-sm text-[#FF6222] mb-1">{responseAgentName}:</h3>
+							{response}
+						</div>
+					{/if}
+
+					{#if error}
+						<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+							{error}
+						</div>
+					{/if}
 					<div class="flex items-end gap-4">
 						<div class="flex-1">
 							<SearchBar
@@ -129,25 +145,14 @@
 							/>
 						{:else}
 							<AppButton
-								text="Voice Call"
+								text="Live Chat"
 								variant="success"
 								icon={MicIcon}
 								onClick={() => (agents.mode = 'VOICE')}
 							/>
 						{/if}
-					</div>
-
-					{#if error}
-						<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
-							{error}
-						</div>
-					{/if}
-
-					{#if response}
-						<div class="rounded-md bg-gray-50 p-4 text-gray-700">
-							{response}
-						</div>
-					{/if}
+							</div>
+					
 				</div>
 			</div>
 		{/if}
