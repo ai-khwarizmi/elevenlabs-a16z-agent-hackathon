@@ -45,12 +45,13 @@ function debouncedSave(session: Session) {
 	}, 1000) as unknown as number;
 }
 
-// Watch for changes in the current session
-$effect(() => {
-	const currentSession = sessions.current;
-	if (currentSession) {
-		debouncedSave(currentSession);
+// Use derived state to watch for changes in the current session
+const currentSession = $derived.by<Session | undefined>(() => {
+	const session = currentSessionId ? sessionList.find((s) => s.id === currentSessionId) : undefined;
+	if (session) {
+		debouncedSave(session);
 	}
+	return session;
 });
 
 // Load sessions from localStorage on initialization
@@ -155,7 +156,7 @@ export const sessions = {
 		return sessionList;
 	},
 	get current(): Session | undefined {
-		return currentSessionId ? sessionList.find((s) => s.id === currentSessionId) : undefined;
+		return currentSession;
 	},
 	createSession(name: string): Session {
 		const session: Session = {
