@@ -3,7 +3,7 @@
 	const MAX_WINDOW_SIZE = 20; // Maximum characters animating at once
 	const MIN_WINDOW_SIZE = 1; // Minimum characters animating at once
 
-	let { text = '', duration = $bindable(800) } = $props();
+	let { text = '', duration = $bindable(800), class: className = '' } = $props();
 	let displayText = $state('');
 	let isAnimating = $state(false);
 	let startTime = $state(0);
@@ -118,10 +118,9 @@
 	});
 </script>
 
-<div class="relative font-mono whitespace-pre-wrap">
+<div class="relative inline-block font-mono whitespace-pre-wrap">
 	<!-- The invisible text that maintains layout -->
-
-	<span class="invisible">{text}</span>
+	<span class="{className} invisible">{text}</span>
 	<!-- The animated scramble text -->
-	<span class="absolute inset-0">{displayText}</span>
+	<span class="{className} absolute inset-0">{displayText}</span>
 </div>

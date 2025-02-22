@@ -27,7 +27,7 @@
 	<div class="h-full w-96 bg-white shadow-lg">
 		<!-- Header -->
 		<div class="border-b border-gray-200 bg-gray-50 p-4">
-			<h2 class="text-lg font-medium text-gray-900">Transcript</h2>
+			<TextScramble text="Transcript" />
 		</div>
 
 		<!-- Messages -->
@@ -38,13 +38,13 @@
 						<div class="flex items-center justify-between">
 							<span class="font-medium text-gray-900">
 								{#if message.role === 'assistant'}
-									<TextScramble text={message.name || ''} duration={800} />
+									<TextScramble text={message.name || ''} />
 								{:else}
-									User
+									<TextScramble text="User" />
 								{/if}
 							</span>
 							<span class="text-xs text-gray-500">
-								{formatTime(message.timestamp)}
+								<TextScramble text={formatTime(message.timestamp)} />
 							</span>
 						</div>
 						<p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-600">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { Agent } from '$lib/utils/agent.svelte';
-	import ConversationalAi from './ConversationalAI.svelte';
+	import TextScramble from './TextScramble.svelte';
 
 	let {
 		agent
@@ -14,6 +14,23 @@
 	$effect(() => {
 		agent;
 		showMessages = false;
+	});
+
+	let stateClasses = $derived(() => {
+		switch (agentState) {
+			case 'IDLE':
+				return 'bg-gray-100 text-gray-800';
+			case 'VOICE_ACTIVE':
+				return 'bg-blue-100 text-blue-800';
+			case 'LEFT_CALL':
+				return 'bg-red-100 text-red-800';
+			case 'WORKING':
+				return 'bg-yellow-100 text-yellow-800';
+			case 'RAISED_HAND':
+				return 'bg-purple-100 text-purple-800';
+			default:
+				return 'bg-gray-100 text-gray-800';
+		}
 	});
 </script>
 
@@ -35,21 +52,12 @@
 				<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
 				{agent.getVoiceId()} :: {agent.getElevenLabsAgentId()}
 				<div class="flex items-center gap-2">
-					<span
-						class="rounded-full px-3 py-1 text-sm font-medium"
-						class:bg-gray-100={agentState === 'IDLE'}
-						class:text-gray-800={agentState === 'IDLE'}
-						class:bg-blue-100={agentState === 'VOICE_ACTIVE'}
-						class:text-blue-800={agentState === 'VOICE_ACTIVE'}
-						class:bg-red-100={agentState === 'LEFT_CALL'}
-						class:text-red-800={agentState === 'LEFT_CALL'}
-						class:bg-yellow-100={agentState === 'WORKING'}
-						class:text-yellow-800={agentState === 'WORKING'}
-						class:bg-purple-100={agentState === 'RAISED_HAND'}
-						class:text-purple-800={agentState === 'RAISED_HAND'}
-					>
-						{agentState}
-					</span>
+					<div class="min-w-[100px] flex-shrink-0 text-center">
+						<TextScramble
+							text={agentState}
+							class="rounded-full px-3 py-1 text-sm font-medium {stateClasses}"
+						/>
+					</div>
 				</div>
 			</div>
 			<p class="mt-2 text-sm text-gray-600">
