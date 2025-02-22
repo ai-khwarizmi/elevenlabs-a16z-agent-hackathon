@@ -15,8 +15,7 @@ import {
 	getGlobalChatlog,
 	mergeMessages,
 	normalizeAgentName,
-	addAiJoinEvent,
-	addAiLeaveEvent
+	addAiJoinEvent
 } from '$lib/stores/chatlog.svelte';
 
 // Interface for a todo item

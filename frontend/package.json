@@ -11,7 +11,9 @@
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"format": "prettier --write .",
-		"lint": "prettier --check . && eslint ."
+		"lint": "prettier --check . && eslint .",
+		"type-check": "tsc --noEmit && svelte-check --tsconfig ./tsconfig.json",
+		"type-check:watch": "tsc --noEmit --watch & svelte-check --tsconfig ./tsconfig.json --watch"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
