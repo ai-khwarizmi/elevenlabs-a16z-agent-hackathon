@@ -1,0 +1,13 @@
+name = "elevenlabs-a16z-hackathon"
+account_id = ""  # This will be filled by the deployment action
+
+main = "./.cloudflare/worker.js"
+site.bucket = "./.cloudflare/public"
+
+build.command = "npm run build"
+
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+[vars]
+SERPER_API_KEY = ""  # This will be set during deployment 
