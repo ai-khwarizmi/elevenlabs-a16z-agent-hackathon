@@ -36,6 +36,7 @@
 		"wrangler": "^3.109.2"
 	},
 	"dependencies": {
+		"@fal-ai/client": "^1.2.3",
 		"openai": "^4.85.3"
 	}
 }

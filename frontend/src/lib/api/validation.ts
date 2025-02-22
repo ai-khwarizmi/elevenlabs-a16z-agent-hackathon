@@ -1,3 +1,5 @@
+import { fal } from '@fal-ai/client';
+
 interface ValidationResult {
 	isValid: boolean;
 	error?: string;
@@ -63,4 +65,19 @@ export async function validateElevenLabsKey(key: string): Promise<ValidationResu
 			error: 'Failed to validate API key'
 		};
 	}
+}
+
+export async function validateFalKey(key: string): Promise<ValidationResult> {
+	if (key) {
+		fal.config({
+			credentials: key
+		});
+		return {
+			isValid: true
+		};
+	}
+	return {
+		isValid: false,
+		error: 'Failed to validate API key'
+	};
 }

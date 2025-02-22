@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import type { Agent } from '$lib/api/agent';
+import type { Agent } from '$lib/api/agent.svelte';
 
 export const agents = writable<Agent[]>([]);
 
