@@ -6,7 +6,11 @@ import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
 import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
-import { createAgent, createVoice, updateAgentTools } from '../api/ai/elevenlabs.svelte';
+import {
+	createAgent,
+	createOrPickRandomVoice,
+	updateAgentTools
+} from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import { generateUniqueId, type TimestampedMessage } from '$lib/types/messages';
@@ -603,7 +607,7 @@ export class Agent {
 				return;
 			}
 
-			const voiceId = await createVoice(this.name, description, elevenLabsKey);
+			const voiceId = await createOrPickRandomVoice(this.name, description, elevenLabsKey);
 			await storeVoiceId(description, voiceId);
 			this.elevenLabsVoiceId = voiceId;
 		} catch (error) {

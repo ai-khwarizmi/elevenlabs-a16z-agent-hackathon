@@ -2,7 +2,7 @@ import type { Agent } from '$lib/utils/agent.svelte';
 import type { Tool } from '$lib/utils/tool.svelte';
 import { ElevenLabsClient } from 'elevenlabs';
 
-export async function createVoice(
+export async function createOrPickRandomVoice(
 	name: string,
 	description: string,
 	apiKey: string
@@ -11,6 +11,17 @@ export async function createVoice(
 		apiKey
 	});
 
+	const existingVoices = await client.voices.getAll();
+	console.log('Existing voices:', existingVoices);
+
+	// if mroe than 10, pick a random one
+	if (existingVoices.voices.length > 10) {
+		const randomVoice =
+			existingVoices.voices[Math.floor(Math.random() * existingVoices.voices.length)];
+		return randomVoice.voice_id;
+	}
+
+	// if less than 10, create a new one
 	try {
 		const text =
 			'Every act of kindness, no matter how small, carries value and can make a difference, as no gesture of goodwill is ever wasted.';
