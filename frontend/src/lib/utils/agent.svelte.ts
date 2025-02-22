@@ -6,7 +6,7 @@ import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
 import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
-import { createVoice } from '../api/ai/elevenlabs.svelte';
+import { createAgent, createVoice } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import { createMachine, interpret } from 'xstate';
@@ -19,6 +19,8 @@ import {
 	addAiJoinEvent,
 	addAiLeaveEvent
 } from '$lib/stores/chatlog.svelte';
+import { Conversation } from '@11labs/client';
+import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
 
 // Interface for a todo item
 interface Todo {
@@ -207,9 +209,12 @@ export class Agent {
 	private profilePicture = $state<string | null>(null);
 	private todos = $state<Todo[]>([]);
 	private elevenLabsVoiceId = $state<string | null>(null);
+	private elevenLabsAgentId = $state<string | null>(null);
 	private state = $state<AgentState>('IDLE');
 	private stateMachine: ReturnType<typeof interpret>;
 	private openai: OpenAI | null = null;
+
+	private conversation: Conversation | null = null;
 
 	constructor(
 		name: string,
@@ -234,9 +239,7 @@ export class Agent {
 		// Initialize state machine with the correct initial state
 		const machine = createAgentMachine(this);
 		this.stateMachine = interpret(machine).start();
-		this.stateMachine.subscribe((state) => {
-			this.state = state.value as AgentState;
-		});
+		this.stateMachine.subscribe((state) => this._onStateChange(state.value as AgentState));
 
 		// Initialize profile picture and voice
 		this.initProfilePicture();
@@ -245,6 +248,78 @@ export class Agent {
 			name: this.getName(),
 			personality: this.getPersonality()
 		});
+	}
+
+	private _onStateChange(state: AgentState): void {
+		this.state = state;
+
+		if (state === 'VOICE_ACTIVE') {
+			this.joinConversation();
+		}
+		if (state === 'TEXT_ACTIVE') {
+			this.leaveConversation();
+		}
+	}
+
+	private async joinConversation(): Promise<void> {
+		if (this.conversation) {
+			await this.conversation.endSession().catch((error) => {
+				console.error('Error ending conversation: ', error);
+			});
+		}
+
+		try {
+			// request microphone access
+			await navigator.mediaDevices.getUserMedia({ audio: true });
+		} catch (error) {
+			console.error('Error requesting microphone access: ', error);
+		}
+
+		console.log(`${this.name} joining conversation`);
+		this.conversation = await Conversation.startSession({
+			agentId: this.id,
+			onMessage: (message) => {
+				console.log('Message from conversation: ', message);
+				this.messageLog = [
+					...this.messageLog,
+					{
+						role: message.source === 'ai' ? 'assistant' : 'user',
+						content: message.message,
+						timestamp: Date.now(),
+						name: message.source === 'ai' ? this.name : 'USER'
+					}
+				];
+			},
+			clientTools: {
+				get_persona: async () => {
+					console.log('Getting persona');
+					return this.getPersonality();
+				},
+				get_chatlog: async () => {
+					console.log('Getting chatlog');
+					return JSON.stringify(this.getMessageLog());
+				}
+				// ...this.getToolDefinitions().map((tool) => ({
+				// 	[tool.function.name]: async (args: ToolArgs) => {
+				// 		console.log('Executing tool: ', tool.function.name);
+				// 		const result = await this.executeTool(tool.function.name, args);
+				// 		return String(result);
+				// 	}
+				// }))
+			}
+		});
+	}
+
+	private async leaveConversation(): Promise<void> {
+		console.log(`${this.name} leaving conversation`);
+		if (this.conversation) {
+			await this.conversation.endSession().catch((error) => {
+				console.error('Error ending conversation: ', error);
+			});
+			console.log(`${this.name} conversation ended`);
+		} else {
+			console.log(`${this.name} no conversation to leave`);
+		}
 	}
 
 	/**
@@ -539,12 +614,45 @@ export class Agent {
 				return;
 			}
 
-			const voiceId = await createVoice(description, elevenLabsKey);
+			const voiceId = await createVoice(this.name, description, elevenLabsKey);
 			await storeVoiceId(description, voiceId);
 			this.elevenLabsVoiceId = voiceId;
 		} catch (error) {
 			console.error('Failed to generate/store voice:', error);
 			this.elevenLabsVoiceId = null;
+		} finally {
+			await this.initElevenLabsAgent();
+		}
+	}
+
+	private async initElevenLabsAgent(): Promise<void> {
+		const { elevenLabsKey } = getStoredKeys();
+		if (!elevenLabsKey) {
+			console.log('No ElevenLabs API key found');
+			return;
+		}
+
+		if (!this.elevenLabsVoiceId) {
+			console.log('No ElevenLabs voice ID found');
+			return;
+		}
+		try {
+			console.log('Getting agent ID from IndexedDB');
+			const storedAgentId = await getAgentId(this.elevenLabsVoiceId);
+			if (storedAgentId) {
+				this.elevenLabsAgentId = storedAgentId;
+				console.log('Agent ID found in IndexedDB: ', storedAgentId);
+				return;
+			}
+
+			const agentId = await createAgent(this.getVoiceDescription(), this.elevenLabsVoiceId, {
+				apiKey: elevenLabsKey
+			});
+			await storeAgentId(this.elevenLabsVoiceId, agentId);
+			this.elevenLabsAgentId = agentId;
+		} catch (error) {
+			console.error('Failed to create ElevenLabs agent:', error);
+			this.elevenLabsAgentId = null;
 		}
 	}
 
@@ -553,6 +661,13 @@ export class Agent {
 	 */
 	getVoiceId(): string | null {
 		return this.elevenLabsVoiceId;
+	}
+
+	/**
+	 * Get the agent's ElevenLabs agent ID
+	 */
+	getElevenLabsAgentId(): string | null {
+		return this.elevenLabsAgentId;
 	}
 
 	/**

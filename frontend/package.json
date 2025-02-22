@@ -36,6 +36,7 @@
 		"wrangler": "^3.109.2"
 	},
 	"dependencies": {
+		"@11labs/client": "^0.0.7",
 		"@fal-ai/client": "^1.2.3",
 		"elevenlabs": "^1.51.0",
 		"elevenlabs-node": "^2.0.3",

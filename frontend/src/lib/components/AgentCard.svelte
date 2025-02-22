@@ -1,7 +1,11 @@
 <script lang="ts">
 	import type { Agent } from '$lib/utils/agent.svelte';
 
-	let { agent } = $props<{ agent: Agent }>();
+	let {
+		agent
+	}: {
+		agent: Agent;
+	} = $props();
 	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
 	let agentState = $derived(agent.getState());
@@ -28,6 +32,7 @@
 		<div class="flex-1">
 			<div class="flex items-center justify-between">
 				<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
+				{agent.getVoiceId()} :: {agent.getElevenLabsAgentId()}
 				<div class="flex items-center gap-2">
 					<span
 						class="rounded-full px-3 py-1 text-sm font-medium"

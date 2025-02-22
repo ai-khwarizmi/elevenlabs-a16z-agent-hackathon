@@ -52,7 +52,7 @@ export const handOffMicTool = new Tool(
 		}
 
 		// If a message was provided, send it to the target agent
-		if (message) {
+		if (typeof message === 'string') {
 			await targetAgent.chat(message);
 		}
 
