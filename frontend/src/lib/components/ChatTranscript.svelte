@@ -22,7 +22,7 @@
 	<div class="h-full w-96 bg-white shadow-lg">
 		<!-- Header -->
 		<div class="border-b border-gray-200 bg-gray-50 p-4">
-			<h2 class="text-lg font-medium text-gray-900">Chat Transcript</h2>
+			<h2 class="text-lg font-medium text-gray-900">Transcript</h2>
 		</div>
 
 		<!-- Messages -->
