@@ -479,11 +479,18 @@ export class Agent {
 		return this.state;
 	}
 
+	onStateChange(oldState: AgentState, newState: AgentState): void {
+		console.log('State changed from', oldState, 'to', newState);
+	}
+
 	/**
 	 * Safely attempt a state transition, throwing an error if invalid
 	 */
 	private safeTransition(newState: AgentState): void {
 		const currentState = this.state;
+		if (currentState === newState) {
+			return;
+		}
 		const allowedStates = VALID_STATE_TRANSITIONS[currentState];
 
 		if (!allowedStates.includes(newState)) {
@@ -495,6 +502,7 @@ export class Agent {
 		}
 
 		this.state = newState;
+		this.onStateChange(currentState, newState);
 	}
 
 	/**
