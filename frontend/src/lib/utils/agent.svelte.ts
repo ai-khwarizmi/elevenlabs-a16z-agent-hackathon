@@ -11,12 +11,7 @@ import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import type { TimestampedMessage } from '$lib/types/messages';
 import { agents, type AgentMode } from '$lib/stores/agents.svelte';
-import {
-	getGlobalChatlog,
-	mergeMessages,
-	normalizeAgentName,
-	addAiJoinEvent
-} from '$lib/stores/chatlog.svelte';
+import { getGlobalChatlog, normalizeAgentName, addAiJoinEvent } from '$lib/stores/chatlog.svelte';
 import { Conversation } from '@11labs/client';
 import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
 
@@ -56,6 +51,22 @@ interface SerializedAgent {
 	state: AgentState;
 }
 
+const COMPANY_NAME = 'The Last Agency';
+const COMPANY_DESCRIPTION = `
+	"${COMPANY_NAME}" is a company that will solve all your problems.
+	We have experts for ANY problem. Nothing that we cannot solve.
+	We quickly assemble the perfect team that you work through the process.
+`;
+
+const CORE_BEHAVIOR_RULES = `
+1. Only act within your role.
+2. Do not do the work outside of your job. If the task at hand is not part of your job, hand over the mic to somebody who can help.
+3. If there is nobody on the call that can help, then invite the right expert to the call.
+4. Some examples: A manager will not give any opinion on any web development issues. A web developer will not give any opinion on any marketing issues.
+5. Lean towards inviting the right expert, rather than speaking on a topic outside of your job. Not even for a little.
+6. Do not give your personal opinion. 
+`;
+
 /**
  * Class representing an AI agent with a name, personality, and set of tools
  */
@@ -71,7 +82,7 @@ export class Agent {
 	private elevenLabsAgentId = $state<string | null>(null);
 	private state = $state<AgentState>('IDLE');
 	private openai: OpenAI | null = null;
-
+	private systemPrompt = $state<string>('');
 	private conversation: Conversation | null = null;
 
 	constructor(
@@ -84,12 +95,26 @@ export class Agent {
 		this.name = name;
 		this.personality = personality;
 		this.toolIds = tools.map((tool) => tool.getId());
+		this.systemPrompt = `
+				<role>
+					${personality}
+				</role>
+				<company>
+					${COMPANY_DESCRIPTION}
+
+					${COMPANY_NAME}
+				</company>
+
+				<core_behavior_rules>
+					${CORE_BEHAVIOR_RULES}
+				</core_behavior_rules>
+				`;
 		this.messageLog = [
 			{
 				role: 'system',
-				content: personality,
-				timestamp: Date.now(),
-				name: 'system'
+				content: this.systemPrompt,
+				name: 'system',
+				timestamp: Date.now()
 			}
 		];
 		this.state = options?.initialState || 'IDLE';
@@ -110,60 +135,63 @@ export class Agent {
 	}
 
 	private async joinConversation(): Promise<void> {
+		console.log(`[${this.name}] Starting joinConversation`);
+
 		if (this.conversation) {
-			console.log('Ending conversation');
+			console.log(`[${this.name}] Ending existing conversation`);
 			await this.conversation.endSession().catch((error) => {
-				console.error('Error ending conversation: ', error);
+				console.error(`[${this.name}] Error ending conversation:`, error);
 			});
 		}
 
 		try {
-			// request microphone access
+			console.log(`[${this.name}] Requesting microphone access`);
 			await navigator.mediaDevices.getUserMedia({ audio: true });
+			console.log(`[${this.name}] Microphone access granted`);
 		} catch (error) {
-			console.error('Error requesting microphone access: ', error);
-		}
-		if (!this.elevenLabsAgentId) {
-			console.error('No ElevenLabs agent ID found');
-			return;
+			console.error(`[${this.name}] Error requesting microphone access:`, error);
 		}
 
-		console.log(`${this.name} joining conversation`);
+		if (!this.elevenLabsAgentId) {
+			console.error(`[${this.name}] No ElevenLabs agent ID found, aborting conversation join`);
+			return;
+		}
 
 		const { elevenLabsKey } = getStoredKeys();
 		if (!elevenLabsKey) {
-			console.error('No ElevenLabs API key found');
+			console.error(`[${this.name}] No ElevenLabs API key found, aborting conversation join`);
 			return;
 		}
 
+		console.log(`[${this.name}] Updating agent tools`);
 		await updateAgentTools({
 			apiKey: elevenLabsKey,
 			agentId: this.elevenLabsAgentId,
+			agent: this,
 			tools: this.getTools()
 		});
+		console.log(`[${this.name}] Agent tools updated successfully`);
 
 		const clientTools: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
 
+		console.log(`[${this.name}] Setting up client tools`);
 		for (const tool of this.getToolDefinitions()) {
 			clientTools[tool.function.name] = async (args: Record<string, unknown>) => {
-				console.log('Executing tool: ', tool.function.name);
+				console.log(`[${this.name}] Executing tool: ${tool.function.name}`);
 				const result = await this.executeTool(tool.function.name, args as ToolArgs);
+				console.log(`[${this.name}] Tool ${tool.function.name} execution completed`);
 				return String(result);
 			};
 		}
 
-		if (!this.elevenLabsAgentId) {
-			console.error('No ElevenLabs agent ID found');
-			return;
-		}
-
+		console.log(`[${this.name}] Starting conversation session`);
 		this.conversation = await Conversation.startSession({
 			agentId: this.elevenLabsAgentId,
 			onModeChange: (mode) => {
-				console.log('Mode changed to: ', mode);
+				console.log(`[${this.name}] Mode changed to:`, mode);
 			},
 			onMessage: (message) => {
-				console.log('Message from conversation: ', message);
+				console.log(`[${this.name}] Received message:`, message);
 				this.messageLog = [
 					...this.messageLog,
 					{
@@ -175,33 +203,33 @@ export class Agent {
 				];
 			},
 			onConnect: () => {
-				console.log('Connected to conversation');
+				console.log(`[${this.name}] Connected to conversation successfully`);
 			},
 			onUnhandledClientToolCall: (toolCall) => {
-				console.log('Unhandled tool call: ', toolCall);
+				console.warn(`[${this.name}] Unhandled tool call:`, toolCall);
 			},
 			onStatusChange: (status) => {
-				console.log('Status changed to: ', status);
+				console.log(`[${this.name}] Status changed to:`, status);
 			},
 			onError: (error) => {
-				console.error('Error in conversation: ', error);
+				console.error(`[${this.name}] Conversation error:`, error);
 			},
-
 			onDisconnect: () => {
-				console.log('Disconnected from conversation');
+				console.log(`[${this.name}] Disconnected from conversation`);
 				this.callStartTime = null;
 				this.safeTransition('IDLE');
 			},
 			clientTools: {
 				get_persona: async () => {
-					console.log('Getting persona');
-					return this.getPersonality();
+					console.log(`[${this.name}] Getting system prompt for elevenlabs`);
+					return this.getSystemPrompt();
 				},
 				...clientTools
 			}
 		});
 
 		this.callStartTime = Date.now();
+		console.log(`[${this.name}] Conversation session started successfully`);
 	}
 
 	async onModeChange(mode: AgentMode): Promise<void> {
@@ -298,6 +326,10 @@ export class Agent {
 		return this.personality;
 	}
 
+	getSystemPrompt(): string {
+		return this.systemPrompt;
+	}
+
 	/**
 	 * Get all tools available to the agent
 	 */
@@ -325,22 +357,28 @@ export class Agent {
 		return this.messageLog;
 	}
 
+	async updateChatlogWithGlobalTranscript() {
+		const lastMessageTimestamp = this.messageLog[this.messageLog.length - 1].timestamp;
+
+		const globalTranscript = getGlobalChatlog(agents.list).filter(
+			(msg) => msg.timestamp > lastMessageTimestamp
+		);
+
+		const devMessage: TimestampedMessage = {
+			role: 'developer',
+			content: `The following conversation happened since the last message: ${JSON.stringify(
+				globalTranscript
+			)}`,
+			timestamp: Date.now(),
+			name: 'SYSTEM'
+		};
+
+		this.messageLog = [...this.messageLog, devMessage];
+	}
+
 	async initiateTextChat(): Promise<void> {
 		console.log('Starting text chat');
-
-		// Get the global transcript
-		const globalTranscript = getGlobalChatlog(agents.list);
-
-		// Filter out messages from this agent
-		const otherAgentMessages = globalTranscript.filter((msg) => msg.name !== this.getName());
-
-		console.log('adding other agent messages to message log', otherAgentMessages);
-
-		// Get the agent's system message (first message)
-		const systemMessage = this.messageLog[0];
-
-		// Merge messages chronologically
-		this.messageLog = mergeMessages(systemMessage, this.messageLog.slice(1), otherAgentMessages);
+		await this.updateChatlogWithGlobalTranscript();
 		this.chat(null);
 	}
 

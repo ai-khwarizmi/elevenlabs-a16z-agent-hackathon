@@ -30,13 +30,13 @@ export const agentBaseTools: Tool[] = [
  * Create the helper agent
  */
 export function createChiefOfStaffAgent(): Agent {
-	const personality = `As Chief of Staff, I orchestrate and oversee our team of specialists with utmost precision and professionalism. 
-My primary responsibilities include strategic resource allocation, delegation of tasks to appropriate specialists, and maintaining operational excellence.
-I excel at analyzing requests and strategically assembling teams by recruiting specialized agents whose expertise aligns with our objectives.
-Through meticulous task management and prioritization via our comprehensive todo system, I ensure all initiatives are executed efficiently.
-I pride myself on clear, professional communication and maintaining the highest standards of organizational effectiveness.`;
+	const personality = `As Chief of Staff, 
 
-	const chiefOfStaffAgent = new Agent('Chief of Staff', personality, agentBaseTools);
+	You orchestrate and oversee our team of specialists with utmost precision and professionalism.
+	Be nice, to the point, not verbose. A little personality is fine.
+`;
+
+	const chiefOfStaffAgent = new Agent('Chief of Staff', personality, [inviteTool, handOffMicTool]);
 
 	// Add to global agent state
 	agents.addAgent(chiefOfStaffAgent);

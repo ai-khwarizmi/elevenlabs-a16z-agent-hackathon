@@ -83,39 +83,3 @@ export function getGlobalChatlog(
 
 	return uniqueMessages.sort((a, b) => a.timestamp - b.timestamp);
 }
-
-/**
- * Merge messages from multiple sources chronologically
- */
-export function mergeMessages(
-	systemMessage: TimestampedMessage,
-	agentMessages: TimestampedMessage[],
-	otherMessages: TimestampedMessage[]
-): TimestampedMessage[] {
-	const mergedMessages = [systemMessage];
-	let agentIndex = 0;
-	let otherIndex = 0;
-
-	while (agentIndex < agentMessages.length || otherIndex < otherMessages.length) {
-		if (agentIndex >= agentMessages.length) {
-			// Add remaining other messages
-			mergedMessages.push(otherMessages[otherIndex]);
-			otherIndex++;
-		} else if (otherIndex >= otherMessages.length) {
-			// Add remaining agent messages
-			mergedMessages.push(agentMessages[agentIndex]);
-			agentIndex++;
-		} else {
-			// Compare timestamps and add the earlier message
-			if (agentMessages[agentIndex].timestamp <= otherMessages[otherIndex].timestamp) {
-				mergedMessages.push(agentMessages[agentIndex]);
-				agentIndex++;
-			} else {
-				mergedMessages.push(otherMessages[otherIndex]);
-				otherIndex++;
-			}
-		}
-	}
-
-	return mergedMessages;
-}

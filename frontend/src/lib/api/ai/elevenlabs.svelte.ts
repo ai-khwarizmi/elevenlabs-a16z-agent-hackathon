@@ -1,3 +1,4 @@
+import type { Agent } from '$lib/utils/agent.svelte';
 import type { Tool } from '$lib/utils/tool.svelte';
 import { ElevenLabsClient } from 'elevenlabs';
 
@@ -51,7 +52,7 @@ export async function createVoice(
 }
 
 const INIT_PROMPT = `
-Always call get_persona first to provide some context on your persona. Stick to this persona throughout the entire call. If its not available, just say "I don't know" and continue.
+Always call get_persona first to provide some context on your persona. Stick to this persona throughout the entire call. 
 `;
 
 function makeToolsArray(tools: Tool[]): {
@@ -67,12 +68,14 @@ function makeToolsArray(tools: Tool[]): {
 		description: string;
 		expects_response: boolean;
 		parameters?: Record<string, unknown>;
+		response_timeout_secs: number;
 	}[] = [
 		{
 			type: 'client',
 			name: 'get_persona',
 			description: "Get the agent's personality description",
-			expects_response: true
+			expects_response: true,
+			response_timeout_secs: 30
 		}
 	];
 	for (const tool of tools) {
@@ -81,7 +84,8 @@ function makeToolsArray(tools: Tool[]): {
 			name: tool.getDefinition().function.name,
 			description: tool.getDefinition().function.description ?? tool.getDefinition().function.name,
 			expects_response: true,
-			parameters: tool.getDefinition().function.parameters
+			parameters: tool.getDefinition().function.parameters,
+			response_timeout_secs: 30
 		});
 	}
 	return toolsArray;
@@ -133,6 +137,7 @@ export async function createAgent(
 export async function updateAgentTools(options: {
 	apiKey: string;
 	agentId: string;
+	agent: Agent;
 	tools?: Tool[];
 }): Promise<void> {
 	try {
@@ -148,7 +153,7 @@ export async function updateAgentTools(options: {
 				conversation_config: {
 					agent: {
 						prompt: {
-							prompt: INIT_PROMPT,
+							prompt: options.agent.getSystemPrompt(),
 							tools: toolsArray,
 							llm: 'gpt-4o'
 						}
