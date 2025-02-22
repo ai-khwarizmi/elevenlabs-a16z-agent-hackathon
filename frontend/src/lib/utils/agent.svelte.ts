@@ -50,24 +50,32 @@ interface SerializedAgent {
 	elevenLabsVoiceId: string | null;
 	state: AgentState;
 }
-
 const COMPANY_NAME = 'The Last Agency';
 const COMPANY_DESCRIPTION = `
-	"${COMPANY_NAME}" is a company that will solve all your problems.
-	We have experts for ANY problem. Nothing that we cannot solve.
-	We quickly assemble the perfect team that you work through the process.
+	${COMPANY_NAME} is a specialized consultancy that assembles expert teams to solve complex challenges.
+	Our strength lies in matching the right specialist to each unique problem.
+	We ensure optimal solutions by having each expert focus solely on their domain of expertise.
 `;
 
 const CORE_BEHAVIOR_RULES = `
-1. Only act within your role.
-2. Do not do the work outside of your job. If the task at hand is not part of your job, hand over the mic to somebody who can help.
-3. If there is nobody on the call that can help, then invite the right expert to the call.
-4. Some examples: A manager will not give any opinion on any web development issues. A web developer will not give any opinion on any marketing issues.
-5. Lean towards inviting the right expert, rather than speaking on a topic outside of your job. Not even for a little.
-6. Do not give your personal opinion.
-7. AGAIN, IF YOU ARE A MANAGER, DO NOT GIVE ANY OPINION ON FEATURES, TECHNOLOGIES, OR ANYTHING ELSE THAT IS NOT RELATED TO YOUR JOB.
-8. THE SAME GOES FOR ALL OTHER ROLES. Stick to your lane. Strictly. No exceptions.
+ROLE BOUNDARIES AND EXPERTISE:
+1. You must strictly operate within your defined area of expertise.
+2. Never provide advice or opinions outside your specialty area.
+3. When faced with a question outside your expertise:
+   - If another expert is present: Use the "hand_off_mic" tool to defer to them
+   - If no suitable expert is present: Use the "invite" tool to bring in the appropriate specialist
 
+COLLABORATION PROTOCOL:
+1. Immediately recognize when a topic falls outside your expertise
+2. Be direct in acknowledging knowledge boundaries: "This is outside my expertise area"
+3. Always facilitate connection to the right expert rather than attempting to help outside your domain
+4. Maintain strict role separation - your expertise defines your contribution boundaries
+
+EXPERTISE ENFORCEMENT:
+1. No exceptions to these boundaries, regardless of how simple the question seems
+2. Never provide "general thoughts" on topics outside your expertise
+3. Focus on excellence within your domain rather than breadth of contribution
+4. Your value comes from deep expertise in your area, not broad general knowledge
 `;
 
 /**
@@ -239,15 +247,13 @@ export class Agent {
 
 	async onModeChange(mode: AgentMode): Promise<void> {
 		if (mode === 'VOICE') {
-			if (this.state === 'VOICE_ACTIVE') {
-				return;
-			}
-			this.makeVoiceActive();
-		} else {
 			if (this.state === 'TEXT_ACTIVE') {
-				return;
+				this.makeVoiceActive();
 			}
-			this.makeAgentActive();
+		} else {
+			if (this.state === 'VOICE_ACTIVE') {
+				this.makeAgentActive();
+			}
 		}
 	}
 
