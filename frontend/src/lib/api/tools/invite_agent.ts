@@ -1,6 +1,7 @@
 import { agents } from '$lib/stores/agents.svelte';
 import { Agent } from '$lib/utils/agent.svelte';
 import { Tool } from '$lib/utils/tool.svelte';
+import { agentBaseTools } from '../agents/helper';
 
 /**
  * Tool for inviting new agents to join the conversation
@@ -30,11 +31,7 @@ export const inviteTool = new Tool(
 		const { name, personality } = args as { name: string; personality: string };
 
 		// Create a new agent with the same tools as the helper
-		const newAgent = new Agent(
-			name,
-			personality,
-			[] // New agents start with no tools
-		);
+		const newAgent = new Agent(name, personality, agentBaseTools);
 
 		// Add the agent to the global state
 		agents.addAgent(newAgent);

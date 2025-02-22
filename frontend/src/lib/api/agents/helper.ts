@@ -5,6 +5,8 @@ import { inviteTool } from '../tools/invite_agent';
 import { todoListTool } from '../tools/todolist';
 import { messageTool } from '../tools/message_agent';
 
+export const agentBaseTools: Tool[] = [inviteTool, todoListTool, messageTool];
+
 export const tools: Tool[] = [inviteTool, todoListTool, messageTool];
 
 /**
