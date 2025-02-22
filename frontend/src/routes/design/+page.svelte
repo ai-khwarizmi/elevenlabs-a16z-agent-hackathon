@@ -5,8 +5,10 @@
 	import Logo from '$lib/components/Logo.svelte';
 	import AppButton from '$lib/components/AppButton.svelte';
 	import HangUpIcon from '$lib/assets/icons/hangup.svg';
+	import MicIcon from '$lib/assets/icons/mic.svg';
 	import Agent from '$lib/components/Agent.svelte';
 	import ChatTranscript from '$lib/components/ChatTranscript.svelte';
+	import Timer from '$lib/components/Timer.svelte';
 
 	let message = $state('');
 	let isProcessing = $state(false);
@@ -15,6 +17,12 @@
 	let isTranscriptExpanded = $state(false);
 
 	let currentAgents = $derived(agents.list);
+
+	let activeAgent = $derived(
+		currentAgents.find(
+			(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+		)
+	);
 
 	async function handleMessage() {
 		if (!message.trim()) return;
@@ -81,7 +89,7 @@
 			</main>
 		{:else}
 			<!-- Agents Display Section -->
-			<div class="mx-auto mb-8 w-full max-w-4xl pb-30">
+			<div class="pb-30 mx-auto mb-8 w-full max-w-4xl">
 				<h2 class="mb-4 text-xl font-semibold">
 					Active Agents ({currentAgents.length})
 				</h2>
@@ -92,14 +100,42 @@
 				</div>
 			</div>
 
-			<!-- Search Section -->
-			<div class="fixed bottom-8 right-0 p-4 transition-transform duration-300" class:-left-96={isTranscriptExpanded} class:left-0={!isTranscriptExpanded}>
-				<div class="mx-auto w-full max-w-2xl space-y-4">
-					<SearchBar
-						bind:value={message}
-						onSearch={handleMessage}
-						placeholder="What can we help you with?"
-					/>
+			<!-- Search and Controls Section -->
+			<div
+				class="fixed bottom-8 right-0 p-4 transition-transform duration-300"
+				class:-left-96={isTranscriptExpanded}
+				class:left-0={!isTranscriptExpanded}
+			>
+				<div class="mx-auto w-full max-w-2xl items-end space-y-4">
+					<div class="flex items-end gap-4">
+						<div class="flex-1">
+							<SearchBar
+								bind:value={message}
+								onSearch={handleMessage}
+								placeholder="What can we help you with?"
+							/>
+						</div>
+						{#if agents.mode === 'VOICE'}
+							{#if activeAgent?.getCallStartTime()}
+								<div class="absolute bottom-20 right-1/4 -translate-x-1/2">
+									<Timer startTime={activeAgent.getCallStartTime()} />
+								</div>
+							{/if}
+							<AppButton
+								text="Hang Up"
+								variant="destructive"
+								icon={HangUpIcon}
+								onClick={() => (agents.mode = 'TEXT')}
+							/>
+						{:else}
+							<AppButton
+								text="Voice Call"
+								variant="success"
+								icon={MicIcon}
+								onClick={() => (agents.mode = 'VOICE')}
+							/>
+						{/if}
+					</div>
 
 					{#if error}
 						<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">

@@ -1,5 +1,5 @@
 <script lang="ts">
-    export let variant: 'primary' | 'secondary' | 'destructive' = 'primary';
+    export let variant: 'primary' | 'secondary' | 'destructive' | 'success' = 'primary';
     export let icon: string | undefined = undefined;
     export let text: string | undefined = undefined;
     export let onClick: (() => void) | undefined = undefined;
@@ -11,7 +11,8 @@
     const variantClasses = {
       primary: "bg-[#FF6222] hover:bg-[#e55820] text-white",
       secondary: "bg-black hover:bg-neutral-900 text-white border border-white",
-      destructive: "bg-[#FF2222] hover:bg-red-600 text-white"
+      destructive: "bg-[#FF2222] hover:bg-red-600 text-white",
+      success: "bg-green-500 hover:bg-green-600 text-white"
     };
   
     $: classes = `${baseClasses} ${variantClasses[variant]} ${!text && icon ? 'p-4' : 'px-6 py-3'} whitespace-nowrap ${$$props.class || ''}`;
