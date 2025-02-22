@@ -1,5 +1,5 @@
-import { Tool, type ToolExecuteFunction } from '$lib/api/agent.svelte';
-import { agentManager } from '$lib/stores/agents.svelte';
+import { agents } from '$lib/stores/agent.svelte';
+import { Tool, type ToolExecuteFunction } from '$lib/utils/tool';
 
 /**
  * Tool for sending messages between agents
@@ -43,7 +43,7 @@ export const messageTool = new Tool(
 		const { to, message } = args;
 
 		// Check if the target agent exists
-		const targetAgent = agentManager.getAgent(to);
+		const targetAgent = agents.getAgent(to);
 		if (!targetAgent) {
 			return {
 				success: false,

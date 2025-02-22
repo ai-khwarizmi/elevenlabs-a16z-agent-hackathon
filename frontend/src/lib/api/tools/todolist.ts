@@ -1,4 +1,5 @@
-import { agentManager, Tool, type ToolExecuteFunction } from '$lib/api/agent.svelte';
+import { agents } from '$lib/stores/agent.svelte';
+import { Tool, type ToolExecuteFunction } from '$lib/utils/tool';
 
 /**
  * Tool for managing an agent's todo list
@@ -103,7 +104,7 @@ export const todoListTool = new Tool(
 			};
 		}
 
-		const agent = agentManager.getAgentById(agentId);
+		const agent = agents.getAgentById(agentId);
 		if (!agent) {
 			return {
 				success: false,

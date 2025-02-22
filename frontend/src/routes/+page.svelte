@@ -2,7 +2,7 @@
 	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
 	import { createHelperAgent } from '$lib/api/agents/helper';
 	import { getStoredKeys } from '$lib/storage/keys';
-	import { agents } from '$lib/stores/agents.svelte';
+	import { agents } from '$lib/stores/agent.svelte';
 
 	let searchQuery = $state('');
 	let isProcessing = $state(false);
@@ -109,12 +109,12 @@
 			<input
 				type="text"
 				bind:value={searchQuery}
-				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
+				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
 				placeholder="What can we help you with?"
 				onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 			/>
 			<button
-				class="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+				class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
 				onclick={handleSearch}
 				disabled={isProcessing}
 				aria-label="Search"

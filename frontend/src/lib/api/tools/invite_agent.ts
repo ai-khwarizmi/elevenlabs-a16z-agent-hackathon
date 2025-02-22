@@ -1,5 +1,6 @@
-import { Agent, Tool } from '$lib/api/agent.svelte';
-import { agentManager } from '$lib/stores/agents.svelte';
+import { agents } from '$lib/stores/agent.svelte';
+import { Agent } from '$lib/utils/agent';
+import { Tool } from '$lib/utils/tool';
 
 /**
  * Tool for inviting new agents to join the conversation
@@ -36,7 +37,7 @@ export const inviteTool = new Tool(
 		);
 
 		// Add the agent to the global state
-		agentManager.addAgent(newAgent);
+		agents.addAgent(newAgent);
 
 		return {
 			success: true,

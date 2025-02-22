@@ -1,5 +1,6 @@
-import { Agent, Tool } from '../agent.svelte';
-import { agentManager } from '../agent.svelte';
+import { Agent } from '$lib/utils/agent';
+import type { Tool } from '$lib/utils/tool';
+import { agents } from '$lib/stores/agent.svelte';
 import { inviteTool } from '../tools/invite_agent';
 import { todoListTool } from '../tools/todolist';
 import { messageTool } from '../tools/message_agent';
@@ -19,7 +20,7 @@ I maintain a todo list to keep track of tasks and prioritize them appropriately.
 	const helperAgent = new Agent('Helper', personality, tools);
 
 	// Add to global agent state
-	agentManager.addAgent(helperAgent);
+	agents.addAgent(helperAgent);
 
 	return helperAgent;
 }
