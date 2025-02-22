@@ -39,6 +39,7 @@
 	},
 	"dependencies": {
 		"@fal-ai/client": "^1.2.3",
+		"browserfs": "^1.4.3",
 		"elevenlabs": "^1.51.0",
 		"elevenlabs-node": "^2.0.3",
 		"idb": "^8.0.2",
