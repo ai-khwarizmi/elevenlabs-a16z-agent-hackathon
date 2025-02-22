@@ -27,7 +27,13 @@ interface Todo {
 	completedAt?: Date;
 }
 
-export type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'TEXT_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
+export type AgentState =
+	| 'IDLE'
+	| 'VOICE_ACTIVE'
+	| 'TEXT_ACTIVE'
+	| 'LEFT_CALL'
+	| 'WORKING'
+	| 'RAISED_HAND';
 
 // Map of valid state transitions
 const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
@@ -120,6 +126,8 @@ export class Agent {
 					${CORE_BEHAVIOR_RULES}
 				</core_behavior_rules>
 				`;
+
+		this.updateChatlogWithGlobalTranscript();
 		this.messageLog = [
 			{
 				id: generateUniqueId(),
@@ -127,7 +135,8 @@ export class Agent {
 				content: this.systemPrompt,
 				name: 'system',
 				timestamp: Date.now()
-			}
+			},
+			...this.messageLog
 		];
 		this.state = options?.initialState || 'IDLE';
 
@@ -147,6 +156,7 @@ export class Agent {
 	}
 
 	private async joinConversation(): Promise<void> {
+		await this.updateChatlogWithGlobalTranscript();
 		console.log(`[${this.name}] Starting joinConversation`);
 
 		if (this.conversation) {
@@ -369,11 +379,17 @@ export class Agent {
 	}
 
 	async updateChatlogWithGlobalTranscript() {
-		const lastMessageTimestamp = this.messageLog[this.messageLog.length - 1].timestamp;
+		const lastMessageTimestamp = (this.messageLog[this.messageLog.length - 1]?.timestamp ?? 0) + 1;
 
+		console.log('timestamp for last message', lastMessageTimestamp);
+		console.log(
+			`[${this.name}] Getting global transcript, before filtering`,
+			getGlobalChatlog(agents.list)
+		);
 		const globalTranscript = getGlobalChatlog(agents.list).filter(
 			(msg) => msg.timestamp > lastMessageTimestamp
 		);
+		console.log(`[${this.name}] Getting global transcript, after filtering`, globalTranscript);
 
 		const devMessage: TimestampedMessage = {
 			id: generateUniqueId(),
@@ -384,6 +400,7 @@ export class Agent {
 			timestamp: Date.now(),
 			name: 'SYSTEM'
 		};
+		console.log(`[${this.name}] Updating chatlog with global transcript`, devMessage);
 
 		this.messageLog = [...this.messageLog, devMessage];
 	}
