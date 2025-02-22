@@ -391,18 +391,22 @@ export class Agent {
 		);
 		console.log(`[${this.name}] Getting global transcript, after filtering`, globalTranscript);
 
-		const devMessage: TimestampedMessage = {
-			id: generateUniqueId(),
-			role: 'developer',
-			content: `The following conversation happened since the last message: ${JSON.stringify(
-				globalTranscript
-			)}`,
-			timestamp: Date.now(),
-			name: 'SYSTEM'
-		};
-		console.log(`[${this.name}] Updating chatlog with global transcript`, devMessage);
+		if (globalTranscript.length > 0) {
+			const devMessage: TimestampedMessage = {
+				id: generateUniqueId(),
+				role: 'developer',
+				content: `The following conversation happened since the last message: ${JSON.stringify(
+					globalTranscript
+				)}`,
+				timestamp: Date.now(),
+				name: 'SYSTEM'
+			};
+			console.log(`[${this.name}] Updating chatlog with global transcript`, devMessage);
 
-		this.messageLog = [...this.messageLog, devMessage];
+			this.messageLog = [...this.messageLog, devMessage];
+		} else {
+			console.log(`[${this.name}] No global transcript to update chatlog with`);
+		}
 	}
 
 	async initiateTextChat(): Promise<void> {
