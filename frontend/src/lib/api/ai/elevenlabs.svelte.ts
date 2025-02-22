@@ -110,6 +110,15 @@ export async function createAgent(
 					},
 					tts: {
 						voice_id: voice_id
+					},
+					conversation: {
+						client_events: [
+							'audio',
+							'interruption',
+							'agent_response',
+							'client_tool_call',
+							'user_transcript'
+						]
 					}
 				}
 			})
@@ -153,6 +162,15 @@ export async function updateAgentTools(options: {
 							tools: toolsArray,
 							llm: 'gpt-4o'
 						}
+					},
+					conversation: {
+						client_events: [
+							'audio',
+							'interruption',
+							'agent_response',
+							'client_tool_call',
+							'user_transcript'
+						]
 					}
 				}
 			})
