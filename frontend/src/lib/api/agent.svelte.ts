@@ -7,6 +7,7 @@ import { createOpenAI } from './ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
 import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
+import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 
 /**
  * Interface for OpenAI-compatible function parameters
@@ -137,9 +138,9 @@ export class Agent {
 	private name: string;
 	private personality: string;
 	private tools: Tool[];
-	private isActive: boolean;
+	private isActive = $state(false);
 	private messageLog: ChatCompletionMessageParam[];
-	private profilePicture: string | null = null;
+	private profilePicture = $state<string | null>(null);
 
 	private openai: OpenAI;
 
@@ -148,7 +149,6 @@ export class Agent {
 		this.name = name;
 		this.personality = personality;
 		this.tools = tools;
-		this.isActive = false;
 		this.messageLog = [
 			{
 				role: 'system',
@@ -159,28 +159,39 @@ export class Agent {
 		// Init openai
 		const { openaiKey } = getStoredKeys();
 		this.openai = createOpenAI(openaiKey);
+
+		// Initialize profile picture
+		this.initProfilePicture();
 	}
 
-	async init() {
-		// Get profile picture
-		this.profilePicture = await this.getProfilePicture();
+	/**
+	 * Get the prompt used to generate the agent's profile picture
+	 */
+	getProfilePrompt(): string {
+		return `Social media profile picture this person: ${this.personality}. The image should be a close-up portrait with a clean background. High quality, photorealistic, 8k, ultra detailed.`;
 	}
 
-	async getProfilePicture(): Promise<string> {
+	private async initProfilePicture(): Promise<void> {
 		try {
-			// Configure fal.ai client with the API key
+			const prompt = this.getProfilePrompt();
+
+			// First try to get from IndexedDB
+			const storedUrl = await getProfilePicture(prompt);
+			if (storedUrl) {
+				this.profilePicture = storedUrl;
+				return;
+			}
+
+			// If not found, generate new image
 			const { falKey } = getStoredKeys();
 			fal.config({
 				credentials: falKey
 			});
 
-			// Generate a prompt based on the agent's personality
-			const basePrompt = `Social media profile picture this person: ${this.personality}. The image should be a close-up portrait with a clean background. High quality, photorealistic, 8k, ultra detailed.`;
-
 			// Call the FLUX.1 model to generate the image
 			const result = await fal.subscribe('fal-ai/flux/schnell', {
 				input: {
-					prompt: basePrompt,
+					prompt,
 					image_size: 'square',
 					num_inference_steps: 4,
 					num_images: 1,
@@ -188,16 +199,23 @@ export class Agent {
 				}
 			});
 
-			// Return the URL of the generated image
+			// Store the image in IndexedDB and get local URL
 			if (result.data.images && result.data.images.length > 0) {
-				return result.data.images[0].url;
+				const remoteUrl = result.data.images[0].url;
+				const localUrl = await storeProfilePicture(prompt, remoteUrl);
+				this.profilePicture = localUrl;
 			}
-
-			return '';
 		} catch (error) {
-			console.error('Failed to generate profile picture:', error);
-			return '';
+			console.error('Failed to generate/store profile picture:', error);
+			this.profilePicture = '';
 		}
+	}
+
+	/**
+	 * Get the agent's profile picture URL
+	 */
+	getProfilePicture(): string | null {
+		return this.profilePicture;
 	}
 
 	/**

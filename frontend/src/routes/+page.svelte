@@ -59,13 +59,30 @@
 			<div class="space-y-4">
 				{#each currentAgents as agent}
 					<div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-						<div class="flex items-center justify-between">
-							<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
-							<span class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800">
-								{agent.isAgentActive() ? 'Active' : 'Standby'}
-							</span>
+						<div class="flex items-center gap-4">
+							{#if agent.getProfilePicture()}
+								<img
+									src={agent.getProfilePicture()}
+									alt="{agent.getName()}'s profile"
+									class="h-16 w-16 rounded-full object-cover"
+								/>
+							{:else}
+								<div class="flex h-16 w-16 items-center justify-center rounded-full bg-gray-200">
+									<span class="text-2xl text-gray-400">{agent.getName()[0].toUpperCase()}</span>
+								</div>
+							{/if}
+							<div class="flex-1">
+								<div class="flex items-center justify-between">
+									<h3 class="text-lg font-medium text-gray-900">{agent.getName()}</h3>
+									<span
+										class="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800"
+									>
+										{agent.isAgentActive() ? 'Active' : 'Standby'}
+									</span>
+								</div>
+								<p class="mt-2 text-sm text-gray-600">{agent.getPersonality()}</p>
+							</div>
 						</div>
-						<p class="mt-2 text-sm text-gray-600">{agent.getPersonality()}</p>
 						{#if agent.getTools().length > 0}
 							<div class="mt-3">
 								<p class="text-sm font-medium text-gray-700">Tools:</p>
@@ -92,12 +109,12 @@
 			<input
 				type="text"
 				bind:value={searchQuery}
-				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 				placeholder="What can we help you with?"
 				onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 			/>
 			<button
-				class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+				class="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
 				onclick={handleSearch}
 				disabled={isProcessing}
 				aria-label="Search"
