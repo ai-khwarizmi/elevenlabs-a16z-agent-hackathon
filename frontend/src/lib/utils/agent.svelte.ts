@@ -447,7 +447,14 @@ export class Agent {
 
 		while (true) {
 			// Strip timestamp from messages before sending to OpenAI
-			const messagesForApi = this.messageLog.map(({ timestamp, ...msg }) => msg);
+			const messagesForApi = this.messageLog.map((msg) => {
+				return {
+					...msg,
+					timestamp: undefined,
+					id: undefined,
+					name: normalizeAgentName(msg.name)
+				};
+			});
 
 			// Get AI response
 			const completion = await this.getOpenAI().chat.completions.create({
