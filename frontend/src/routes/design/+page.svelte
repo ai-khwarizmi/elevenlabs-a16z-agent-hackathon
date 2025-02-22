@@ -1,0 +1,115 @@
+<script lang="ts">
+	import { getStoredKeys } from '$lib/storage/keys';
+	import { agents } from '$lib/stores/agents.svelte';
+	import SearchBar from '$lib/components/SearchBar.svelte';
+	import Logo from '$lib/components/Logo.svelte';
+	import AppButton from '$lib/components/AppButton.svelte';
+	import HangUpIcon from '$lib/assets/icons/hangup.svg';
+	import Agent from '$lib/components/Agent.svelte';
+
+	let message = $state('');
+	let isProcessing = $state(false);
+	let response = $state('');
+	let error = $state('');
+
+	let currentAgents = $derived(agents.list);
+
+	async function handleMessage() {
+		if (!message.trim()) return;
+
+		const messageCopy = message.trim();
+		message = '';
+		//get agent
+		const agent = currentAgents.find(
+			(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+		);
+
+		if (!agent) {
+			error = 'No active agent found';
+			console.error('No active agent found');
+			return;
+		}
+
+		const { openaiKey } = getStoredKeys();
+		if (!openaiKey) {
+			error = 'Please enter your OpenAI API key first';
+			return;
+		}
+
+		isProcessing = true;
+		error = '';
+		response = '';
+
+		try {
+			response = await agent.chat(messageCopy);
+		} catch (err) {
+			error = 'Failed to process your request';
+			console.error(err);
+		} finally {
+			isProcessing = false;
+		}
+	}
+</script>
+
+<svelte:head>
+	<title>Project WarRoom</title>
+	<link
+		href="https://fonts.googleapis.com/css2?family=Anonymous+Pro:wght@400;700&display=swap"
+		rel="stylesheet"
+	/>
+</svelte:head>
+
+<div class="min-h-screen bg-black p-8 text-white">
+	{#if currentAgents.length === 0}
+		<main class="flex min-h-[calc(100vh-200px)] items-center justify-center">
+			<div class="flex w-full max-w-3xl flex-col items-center gap-12">
+				<Logo size="large" />
+				<div class="w-full">
+					<SearchBar
+						bind:value={message}
+						{isProcessing}
+						onSearch={handleMessage}
+						placeholder="What can we help you with?"
+					/>
+				</div>
+				<AppButton text="Hang Up" variant="destructive" icon={HangUpIcon} />
+			</div>
+		</main>
+	{:else}
+		<!-- Agents Display Section -->
+		<div class="mx-auto mb-8 w-full max-w-2xl">
+			<h2 class="mb-4 text-xl font-semibold">
+				Active Agents ({currentAgents.length})
+			</h2>
+			<div class="space-y-4 flex gap-4">
+				{#each currentAgents as agent}
+					<Agent {agent} state="speaking" />
+				{/each}
+			</div>
+		</div>
+
+		<!-- Search Section -->
+		<div class="fixed bottom-8 left-0 right-0 z-50 bg-black/80 p-4 backdrop-blur-sm">
+			<div class="mx-auto w-full max-w-2xl space-y-4">
+				<SearchBar
+					bind:value={message}
+					{isProcessing}
+					onSearch={handleMessage}
+					placeholder="What can we help you with?"
+				/>
+
+				{#if error}
+					<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+						{error}
+					</div>
+				{/if}
+
+				{#if response}
+					<div class="rounded-md bg-gray-50 p-4 text-gray-700">
+						{response}
+					</div>
+				{/if}
+			</div>
+		</div>
+	{/if}
+</div>
