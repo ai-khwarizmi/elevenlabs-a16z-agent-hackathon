@@ -5,6 +5,7 @@ import type {
 import OpenAI from 'openai';
 import { createOpenAI } from './ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
+import { uid } from 'uid';
 
 /**
  * Interface for OpenAI-compatible function parameters
@@ -131,6 +132,7 @@ export class Tool {
  * Class representing an AI agent with a name, personality, and set of tools
  */
 export class Agent {
+	readonly id: string;
 	private name: string;
 	private personality: string;
 	private tools: Tool[];
@@ -139,7 +141,8 @@ export class Agent {
 
 	private openai: OpenAI;
 
-	constructor(name: string, personality: string, tools: Tool[]) {
+	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
+		this.id = options?.id ?? uid();
 		this.name = name;
 		this.personality = personality;
 		this.tools = tools;
