@@ -1,5 +1,37 @@
 import type { TimestampedMessage } from '$lib/types/messages';
 
+// Global state for developer events
+let developerEvents = $state<TimestampedMessage[]>([]);
+
+// Helper function to add developer events
+export function addDeveloperEvent(message: string) {
+	developerEvents = [
+		...developerEvents,
+		{
+			role: 'developer',
+			content: message,
+			timestamp: Date.now(),
+			name: 'developer'
+		}
+	];
+}
+
+// Helper function to clear developer events
+export function clearDeveloperEvents() {
+	developerEvents = [];
+}
+
+// Helper functions for AI join/leave events
+export function addAiJoinEvent(aiName: string) {
+	const normalizedName = normalizeAgentName(aiName);
+	addDeveloperEvent(`${normalizedName} joined the conversation`);
+}
+
+export function addAiLeaveEvent(aiName: string) {
+	const normalizedName = normalizeAgentName(aiName);
+	addDeveloperEvent(`${normalizedName} left the conversation`);
+}
+
 // Helper function to normalize agent names
 export function normalizeAgentName(name: string | null | undefined): string {
 	if (!name) {
@@ -14,22 +46,25 @@ export function normalizeAgentName(name: string | null | undefined): string {
 
 /**
  * Get a global chatlog of all messages between agents and users, ordered by timestamp
- * Excludes system messages and tool calls
+ * Includes developer events, excludes system messages and tool calls
  * @returns Array of messages with timestamp
  */
 export function getGlobalChatlog(
 	agents: { getMessageLog: () => TimestampedMessage[] }[]
 ): TimestampedMessage[] {
-	const allowed_roles = ['user', 'assistant'];
-	const allMessages = agents.flatMap((agent) =>
-		agent
-			.getMessageLog()
-			.filter((msg) => allowed_roles.includes(msg.role) && msg.content !== null)
-			.map((msg) => ({
-				...msg,
-				name: normalizeAgentName(msg.name)
-			}))
-	);
+	const allowed_roles = ['user', 'assistant', 'developer'];
+	const allMessages = [
+		...agents.flatMap((agent) =>
+			agent
+				.getMessageLog()
+				.filter((msg) => allowed_roles.includes(msg.role) && msg.content !== null)
+				.map((msg) => ({
+					...msg,
+					name: normalizeAgentName(msg.name)
+				}))
+		),
+		...developerEvents
+	];
 
 	// Deduplicate messages based on content, timestamp, and name
 	const uniqueMessages = allMessages.filter(

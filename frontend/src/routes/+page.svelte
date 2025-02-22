@@ -3,20 +3,26 @@
 	import { agents } from '$lib/stores/agents.svelte';
 	import AgentCard from '$lib/components/AgentCard.svelte';
 
-	let searchQuery = $state('');
+	let message = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
 	let error = $state('');
 
 	let currentAgents = $derived(agents.list);
-	let chiefOfStaffAgent = $derived(
-		currentAgents.find((agent) => agent.getName() === 'Chief of Staff')
-	);
 
-	async function handleSearch() {
-		if (!searchQuery.trim()) return;
-		if (!chiefOfStaffAgent) {
-			error = 'Chief of Staff agent not found. Please refresh the page.';
+	async function handleMessage() {
+		if (!message.trim()) return;
+
+		const messageCopy = message.trim();
+		message = '';
+		//get agent
+		const agent = currentAgents.find(
+			(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+		);
+
+		if (!agent) {
+			error = 'No active agent found';
+			console.error('No active agent found');
 			return;
 		}
 
@@ -31,7 +37,7 @@
 		response = '';
 
 		try {
-			response = await chiefOfStaffAgent.chat(searchQuery);
+			response = await agent.chat(messageCopy);
 		} catch (err) {
 			error = 'Failed to process your request';
 			console.error(err);
@@ -61,14 +67,14 @@
 		<div class="relative">
 			<input
 				type="text"
-				bind:value={searchQuery}
+				bind:value={message}
 				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 				placeholder="What can we help you with?"
-				onkeydown={(e) => e.key === 'Enter' && handleSearch()}
+				onkeydown={(e) => e.key === 'Enter' && handleMessage()}
 			/>
 			<button
 				class="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-				onclick={handleSearch}
+				onclick={handleMessage}
 				disabled={isProcessing}
 				aria-label="Search"
 			>

@@ -409,7 +409,6 @@ export class Agent {
 						this.messageLog = [
 							...this.messageLog,
 							{
-								...response,
 								role: 'tool',
 								name: normalizeAgentName(this.getName()),
 								tool_call_id: toolCall.id,
