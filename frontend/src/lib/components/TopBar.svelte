@@ -2,6 +2,7 @@
 	import ApiKeyInputs from './ApiKeyInputs.svelte';
 	import { sessions } from '$lib/stores/agents.svelte';
 
+	let { isTranscriptExpanded = $bindable(true) } = $props();
 	let sessionList = $derived(sessions.list);
 	let currentSession = $derived(sessions.current);
 
@@ -16,12 +17,15 @@
 	}
 </script>
 
-<div class="fixed top-0 left-0 z-50 flex w-full items-start justify-between p-4">
+<div
+	class="fixed top-0 left-0 z-50 flex w-full items-start justify-between p-4 transition-[padding] duration-300"
+	class:pr-[calc(384px+1rem)]={isTranscriptExpanded}
+>
 	<div>
 		<ApiKeyInputs />
 	</div>
 
-	<div class="mr-4 flex items-center gap-2">
+	<div class="flex items-center gap-2">
 		<select
 			value={currentSession?.id}
 			onchange={handleSessionChange}

@@ -1,5 +1,4 @@
 <script lang="ts">
-	import TopBar from '$lib/components/TopBar.svelte';
 	import { getStoredKeys } from '$lib/storage/keys';
 	import { agents } from '$lib/stores/agents.svelte';
 	import { Agent } from '$lib/utils/agent.svelte';
@@ -39,8 +38,6 @@
 		}
 	}
 </script>
-
-<TopBar />
 
 <div class="flex min-h-screen flex-col items-center justify-center px-4">
 	<!-- Agents Display Section -->
