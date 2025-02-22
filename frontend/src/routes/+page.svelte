@@ -2,6 +2,7 @@
 	import { getStoredKeys } from '$lib/storage/keys';
 	import { agents } from '$lib/stores/agents.svelte';
 	import AgentCard from '$lib/components/AgentCard.svelte';
+	import Timer from '$lib/components/Timer.svelte';
 
 	let message = $state('');
 	let isProcessing = $state(false);
@@ -70,12 +71,56 @@
 
 	<!-- Search Section -->
 	<div class="w-full max-w-2xl space-y-4">
+		<div class="mb-4 flex justify-center gap-4">
+			{#if agents.mode === 'VOICE'}
+				<div class="flex items-center gap-2 rounded-full bg-gray-100 pl-4">
+					{#if activeAgent?.getCallStartTime()}
+						<Timer startTime={activeAgent.getCallStartTime()} />
+					{/if}
+					<button
+						class={`rounded-full px-4 py-2 ${'bg-red-500 text-white'}`}
+						onclick={() => (agents.mode = 'TEXT')}
+					>
+						<span class="flex items-center gap-2">
+							<svg
+								xmlns="http://www.w3.org/2000/svg"
+								class="h-5 w-5"
+								viewBox="0 0 20 20"
+								fill="currentColor"
+							>
+								<path
+									d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"
+								/>
+								<path
+									d="M16.707 3.293a1 1 0 010 1.414L15.414 6l1.293 1.293a1 1 0 01-1.414 1.414L14 7.414l-1.293 1.293a1 1 0 11-1.414-1.414L12.586 6l-1.293-1.293a1 1 0 011.414-1.414L14 4.586l1.293-1.293a1 1 0 011.414 0z"
+								/>
+							</svg>
+							Hang Up
+						</span>
+					</button>
+				</div>
+			{:else}
+				<button
+					class={`rounded-full px-4 py-2 ${'bg-green-500 text-white'}`}
+					onclick={() => (agents.mode = 'VOICE')}
+				>
+					<span class="flex items-center gap-2">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							class="h-5 w-5"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+						>
+							<path
+								d="M2 3a1 1 0 011-1h2.153a1 1 0 01.986.836l.74 4.435a1 1 0 01-.54 1.06l-1.548.773a11.037 11.037 0 006.105 6.105l.774-1.548a1 1 0 011.059-.54l4.435.74a1 1 0 01.836.986V17a1 1 0 01-1 1h-2C7.82 18 2 12.18 2 5V3z"
+							/>
+						</svg>
+						Voice Call
+					</span>
+				</button>
+			{/if}
+		</div>
 		<div class="relative">
-			<button
-				onclick={() => {
-					activeAgent?.makeVoiceActive();
-				}}>Join Call</button
-			>
 			<input
 				type="text"
 				bind:value={message}

@@ -6,11 +6,11 @@ import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
 import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
-import { createAgent, createVoice } from '../api/ai/elevenlabs.svelte';
+import { createAgent, createVoice, updateAgentTools } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
 import type { TimestampedMessage } from '$lib/types/messages';
-import { agents } from '$lib/stores/agents.svelte';
+import { agents, type AgentMode } from '$lib/stores/agents.svelte';
 import {
 	getGlobalChatlog,
 	mergeMessages,
@@ -103,8 +103,15 @@ export class Agent {
 		});
 	}
 
+	private callStartTime = $state<number | null>(null);
+
+	getCallStartTime(): number | null {
+		return this.callStartTime;
+	}
+
 	private async joinConversation(): Promise<void> {
 		if (this.conversation) {
+			console.log('Ending conversation');
 			await this.conversation.endSession().catch((error) => {
 				console.error('Error ending conversation: ', error);
 			});
@@ -116,10 +123,45 @@ export class Agent {
 		} catch (error) {
 			console.error('Error requesting microphone access: ', error);
 		}
+		if (!this.elevenLabsAgentId) {
+			console.error('No ElevenLabs agent ID found');
+			return;
+		}
 
 		console.log(`${this.name} joining conversation`);
+
+		const { elevenLabsKey } = getStoredKeys();
+		if (!elevenLabsKey) {
+			console.error('No ElevenLabs API key found');
+			return;
+		}
+
+		await updateAgentTools({
+			apiKey: elevenLabsKey,
+			agentId: this.elevenLabsAgentId,
+			tools: this.getTools()
+		});
+
+		const clientTools: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
+
+		for (const tool of this.getToolDefinitions()) {
+			clientTools[tool.function.name] = async (args: Record<string, unknown>) => {
+				console.log('Executing tool: ', tool.function.name);
+				const result = await this.executeTool(tool.function.name, args as ToolArgs);
+				return String(result);
+			};
+		}
+
+		if (!this.elevenLabsAgentId) {
+			console.error('No ElevenLabs agent ID found');
+			return;
+		}
+
 		this.conversation = await Conversation.startSession({
-			agentId: this.id,
+			agentId: this.elevenLabsAgentId,
+			onModeChange: (mode) => {
+				console.log('Mode changed to: ', mode);
+			},
 			onMessage: (message) => {
 				console.log('Message from conversation: ', message);
 				this.messageLog = [
@@ -132,24 +174,48 @@ export class Agent {
 					}
 				];
 			},
+			onConnect: () => {
+				console.log('Connected to conversation');
+			},
+			onUnhandledClientToolCall: (toolCall) => {
+				console.log('Unhandled tool call: ', toolCall);
+			},
+			onStatusChange: (status) => {
+				console.log('Status changed to: ', status);
+			},
+			onError: (error) => {
+				console.error('Error in conversation: ', error);
+			},
+
+			onDisconnect: () => {
+				console.log('Disconnected from conversation');
+				this.callStartTime = null;
+				this.safeTransition('IDLE');
+			},
 			clientTools: {
 				get_persona: async () => {
 					console.log('Getting persona');
 					return this.getPersonality();
 				},
-				get_chatlog: async () => {
-					console.log('Getting chatlog');
-					return JSON.stringify(this.getMessageLog());
-				}
-				// ...this.getToolDefinitions().map((tool) => ({
-				// 	[tool.function.name]: async (args: ToolArgs) => {
-				// 		console.log('Executing tool: ', tool.function.name);
-				// 		const result = await this.executeTool(tool.function.name, args);
-				// 		return String(result);
-				// 	}
-				// }))
+				...clientTools
 			}
 		});
+
+		this.callStartTime = Date.now();
+	}
+
+	async onModeChange(mode: AgentMode): Promise<void> {
+		if (mode === 'VOICE') {
+			if (this.state === 'VOICE_ACTIVE') {
+				return;
+			}
+			this.makeVoiceActive();
+		} else {
+			if (this.state === 'TEXT_ACTIVE') {
+				return;
+			}
+			this.makeAgentActive();
+		}
 	}
 
 	private async leaveConversation(): Promise<void> {
@@ -487,7 +553,7 @@ export class Agent {
 				return;
 			}
 
-			const agentId = await createAgent(this.getVoiceDescription(), this.elevenLabsVoiceId, {
+			const agentId = await createAgent(this.elevenLabsVoiceId, this.getTools(), {
 				apiKey: elevenLabsKey
 			});
 			await storeAgentId(this.elevenLabsVoiceId, agentId);
@@ -595,7 +661,7 @@ export class Agent {
 		}
 
 		if (newState === 'TEXT_ACTIVE') {
-			this.initiateTextChat();
+			// this.initiateTextChat();
 		} else {
 			console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
 		}

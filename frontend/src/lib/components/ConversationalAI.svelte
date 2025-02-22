@@ -1,4 +1,4 @@
-<!-- <script lang="ts">
+<script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { Conversation } from '@11labs/client';
 	import { getStoredKeys } from '$lib/storage/keys';
@@ -27,9 +27,15 @@
 			// Request microphone access first
 			await navigator.mediaDevices.getUserMedia({ audio: true });
 
+			const agentId = agent.getElevenLabsAgentId();
+			if (!agentId) {
+				error = 'No agent ID found';
+				return;
+			}
+
 			// Initialize conversation
 			conversation = await Conversation.startSession({
-				agentId: 'OjiSpATXkiaytxa2HS4q', // Replace with your agent ID
+				agentId: agentId,
 
 				onMessage: (message: { message: string; source: string }) => {
 					transcription = message.message;
@@ -195,4 +201,4 @@
 		color: #666;
 		line-height: 1.5;
 	}
-</style> -->
+</style>

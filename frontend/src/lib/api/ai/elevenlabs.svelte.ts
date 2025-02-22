@@ -1,3 +1,4 @@
+import type { Tool } from '$lib/utils/tool.svelte';
 import { ElevenLabsClient } from 'elevenlabs';
 
 export async function createVoice(
@@ -35,7 +36,7 @@ export async function createVoice(
 
 		const voice = await client.textToVoice.createVoiceFromPreview({
 			generated_voice_id: result.previews[0].generated_voice_id,
-			voice_description: description,
+			voice_description: description.slice(0, 500), // TODO: better handling of description limitations
 			voice_name: name
 		});
 
@@ -49,12 +50,50 @@ export async function createVoice(
 	}
 }
 
+const INIT_PROMPT = `
+Always call get_persona first to provide some context on your persona. Stick to this persona throughout the entire call. If its not available, just say "I don't know" and continue.
+`;
+
+function makeToolsArray(tools: Tool[]): {
+	type: 'client';
+	name: string;
+	description: string;
+	expects_response: boolean;
+	parameters?: Record<string, unknown>;
+}[] {
+	const toolsArray: {
+		type: 'client';
+		name: string;
+		description: string;
+		expects_response: boolean;
+		parameters?: Record<string, unknown>;
+	}[] = [
+		{
+			type: 'client',
+			name: 'get_persona',
+			description: "Get the agent's personality description",
+			expects_response: true
+		}
+	];
+	for (const tool of tools) {
+		toolsArray.push({
+			type: 'client',
+			name: tool.getDefinition().function.name,
+			description: tool.getDefinition().function.description ?? tool.getDefinition().function.name,
+			expects_response: true,
+			parameters: tool.getDefinition().function.parameters
+		});
+	}
+	return toolsArray;
+}
+
 export async function createAgent(
-	description: string,
 	voice_id: string,
+	tools: Tool[],
 	options: { apiKey: string }
 ): Promise<string> {
 	try {
+		const toolsArray = makeToolsArray(tools);
 		const response = await fetch('https://api.elevenlabs.io/v1/convai/agents/create', {
 			method: 'POST',
 			headers: {
@@ -65,23 +104,10 @@ export async function createAgent(
 				conversation_config: {
 					agent: {
 						prompt: {
-							system: description
+							prompt: INIT_PROMPT,
+							tools: toolsArray
 						}
 					},
-					tools: [
-						{
-							type: 'client',
-							name: 'get_persona',
-							description: "Get the agent's personality description",
-							expects_response: true
-						},
-						{
-							type: 'client',
-							name: 'get_chatlog',
-							description: 'Get the conversation history',
-							expects_response: true
-						}
-					],
 					tts: {
 						voice_id: voice_id
 					}
@@ -100,6 +126,46 @@ export async function createAgent(
 		return result.agent_id;
 	} catch (error) {
 		console.error('Failed to create agent:', error);
+		throw error;
+	}
+}
+
+export async function updateAgentTools(options: {
+	apiKey: string;
+	agentId: string;
+	tools?: Tool[];
+}): Promise<void> {
+	try {
+		const toolsArray = makeToolsArray(options.tools ?? []);
+
+		const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${options.agentId}`, {
+			method: 'PATCH',
+			headers: {
+				'xi-api-key': options.apiKey,
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({
+				conversation_config: {
+					agent: {
+						prompt: {
+							prompt: INIT_PROMPT,
+							tools: toolsArray,
+							llm: 'gpt-4o'
+						}
+					}
+				}
+			})
+		});
+
+		const result = await response.json();
+
+		console.log('Agent update result:', result);
+
+		if (!result.agent_id) {
+			throw new Error('No agent ID returned from API');
+		}
+	} catch (error) {
+		console.error('Failed to update agent:', error);
 		throw error;
 	}
 }

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Agent } from '$lib/utils/agent.svelte';
+	import ConversationalAi from './ConversationalAI.svelte';
 
 	let {
 		agent
@@ -51,7 +52,9 @@
 					</span>
 				</div>
 			</div>
-			<p class="mt-2 text-sm text-gray-600">{agent.getPersonality()}</p>
+			<p class="mt-2 text-sm text-gray-600">
+				{agent.getPersonality()}
+			</p>
 		</div>
 	</div>
 	{#if agent.getTools().length > 0}

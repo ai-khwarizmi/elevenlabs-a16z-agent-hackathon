@@ -20,6 +20,8 @@ interface Session {
 	agents: Agent[];
 }
 
+export type AgentMode = 'VOICE' | 'TEXT';
+
 const SESSION_LIST_KEY = 'session-list';
 const LAST_SESSION_KEY = 'last-session-id';
 
@@ -32,6 +34,7 @@ function getSessionKey(id: string): string {
  */
 let sessionList = $state<Session[]>([]);
 let currentSessionId = $state<string | null>(null);
+let agentMode = $state<AgentMode>('TEXT');
 
 async function autoSave() {
 	if (sessions.current) {
@@ -218,6 +221,15 @@ export const agents = {
 			sessions.current.lastModified = new Date().toISOString();
 			saveSession(sessions.current);
 		}
+	},
+	get mode() {
+		return agentMode;
+	},
+	set mode(value: AgentMode) {
+		agentMode = value;
+		agents.list.forEach((agent) => {
+			agent.onModeChange(agentMode);
+		});
 	},
 	addAgent(agent: Agent): void {
 		if (sessions.current) {
