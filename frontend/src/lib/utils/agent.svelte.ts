@@ -281,8 +281,15 @@ export class Agent {
 
 			const response = completion.choices[0].message;
 
-			// Add AI response to log with timestamp
-			this.messageLog = [...this.messageLog, { ...response, timestamp: Date.now() }];
+			// Add AI response to log with timestamp and name
+			this.messageLog = [
+				...this.messageLog,
+				{
+					...response,
+					timestamp: Date.now(),
+					name: this.getName()
+				}
+			];
 
 			// If there's a function call, execute it
 			if (response.tool_calls) {

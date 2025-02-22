@@ -1,6 +1,7 @@
 import { Agent } from '$lib/utils/agent.svelte';
 import { uid } from 'uid';
 import { createHelperAgent } from '$lib/api/agents/helper';
+import type { TimestampedMessage } from '$lib/types/messages';
 
 interface SerializedSession {
 	id: string;
@@ -234,5 +235,19 @@ export const agents = {
 			sessions.current.lastModified = new Date().toISOString();
 			saveSession(sessions.current);
 		}
+	},
+	/**
+	 * Get a global chatlog of all messages between agents and users, ordered by timestamp
+	 * Excludes system messages and tool calls
+	 * @returns Array of messages with timestamp
+	 */
+	getGlobalChatlog(): TimestampedMessage[] {
+		if (!sessions.current) return [];
+
+		const allMessages = sessions.current.agents.flatMap((agent) =>
+			agent.getMessageLog().filter((msg) => msg.role !== 'system' && msg.role !== 'tool')
+		);
+
+		return allMessages.sort((a, b) => a.timestamp - b.timestamp);
 	}
 };
