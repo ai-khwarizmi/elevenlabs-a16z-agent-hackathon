@@ -9,7 +9,7 @@ import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
 import { createAgent, createVoice, updateAgentTools } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
-import type { TimestampedMessage } from '$lib/types/messages';
+import { generateUniqueId, type TimestampedMessage } from '$lib/types/messages';
 import { agents, type AgentMode } from '$lib/stores/agents.svelte';
 import { getGlobalChatlog, normalizeAgentName, addAiJoinEvent } from '$lib/stores/chatlog.svelte';
 import { Conversation } from '@11labs/client';
@@ -64,7 +64,10 @@ const CORE_BEHAVIOR_RULES = `
 3. If there is nobody on the call that can help, then invite the right expert to the call.
 4. Some examples: A manager will not give any opinion on any web development issues. A web developer will not give any opinion on any marketing issues.
 5. Lean towards inviting the right expert, rather than speaking on a topic outside of your job. Not even for a little.
-6. Do not give your personal opinion. 
+6. Do not give your personal opinion.
+7. AGAIN, IF YOU ARE A MANAGER, DO NOT GIVE ANY OPINION ON FEATURES, TECHNOLOGIES, OR ANYTHING ELSE THAT IS NOT RELATED TO YOUR JOB.
+8. THE SAME GOES FOR ALL OTHER ROLES. Stick to your lane. Strictly. No exceptions.
+
 `;
 
 /**
@@ -111,6 +114,7 @@ export class Agent {
 				`;
 		this.messageLog = [
 			{
+				id: generateUniqueId(),
 				role: 'system',
 				content: this.systemPrompt,
 				name: 'system',
@@ -195,6 +199,7 @@ export class Agent {
 				this.messageLog = [
 					...this.messageLog,
 					{
+						id: generateUniqueId(),
 						role: message.source === 'ai' ? 'assistant' : 'user',
 						content: message.message,
 						timestamp: Date.now(),
@@ -365,6 +370,7 @@ export class Agent {
 		);
 
 		const devMessage: TimestampedMessage = {
+			id: generateUniqueId(),
 			role: 'developer',
 			content: `The following conversation happened since the last message: ${JSON.stringify(
 				globalTranscript
@@ -403,6 +409,7 @@ export class Agent {
 			this.messageLog = [
 				...this.messageLog,
 				{
+					id: generateUniqueId(),
 					role: 'user',
 					name: 'USER',
 					content: userMessage,
@@ -429,6 +436,7 @@ export class Agent {
 			this.messageLog = [
 				...this.messageLog,
 				{
+					id: generateUniqueId(),
 					...response,
 					timestamp: Date.now(),
 					name: normalizeAgentName(this.getName())
@@ -458,6 +466,7 @@ export class Agent {
 					this.messageLog = [
 						...this.messageLog,
 						{
+							id: generateUniqueId(),
 							role: 'tool',
 							name: normalizeAgentName(this.getName()),
 							tool_call_id,
@@ -592,7 +601,8 @@ export class Agent {
 			}
 
 			const agentId = await createAgent(this.elevenLabsVoiceId, this.getTools(), {
-				apiKey: elevenLabsKey
+				apiKey: elevenLabsKey,
+				agent: this
 			});
 			await storeAgentId(this.elevenLabsVoiceId, agentId);
 			this.elevenLabsAgentId = agentId;
@@ -739,7 +749,11 @@ export class Agent {
 	}
 
 	makeAgentActive(): void {
-		this.safeTransition('TEXT_ACTIVE');
+		if (agents.mode === 'VOICE') {
+			this.safeTransition('VOICE_ACTIVE');
+		} else {
+			this.safeTransition('TEXT_ACTIVE');
+		}
 	}
 
 	leaveCall(): void {

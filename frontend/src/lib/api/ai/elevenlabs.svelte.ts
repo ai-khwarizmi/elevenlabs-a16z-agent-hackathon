@@ -51,10 +51,6 @@ export async function createVoice(
 	}
 }
 
-const INIT_PROMPT = `
-Always call get_persona first to provide some context on your persona. Stick to this persona throughout the entire call. 
-`;
-
 function makeToolsArray(tools: Tool[]): {
 	type: 'client';
 	name: string;
@@ -94,7 +90,7 @@ function makeToolsArray(tools: Tool[]): {
 export async function createAgent(
 	voice_id: string,
 	tools: Tool[],
-	options: { apiKey: string }
+	options: { apiKey: string; agent: Agent }
 ): Promise<string> {
 	try {
 		const toolsArray = makeToolsArray(tools);
@@ -108,7 +104,7 @@ export async function createAgent(
 				conversation_config: {
 					agent: {
 						prompt: {
-							prompt: INIT_PROMPT,
+							prompt: options.agent.getSystemPrompt(),
 							tools: toolsArray
 						}
 					},

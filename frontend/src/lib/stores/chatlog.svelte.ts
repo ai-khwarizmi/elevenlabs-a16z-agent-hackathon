@@ -1,4 +1,4 @@
-import type { TimestampedMessage } from '$lib/types/messages';
+import { generateUniqueId, type TimestampedMessage } from '$lib/types/messages';
 
 // Global state for developer events
 let developerEvents = $state<TimestampedMessage[]>([]);
@@ -8,6 +8,7 @@ export function addDeveloperEvent(message: string) {
 	developerEvents = [
 		...developerEvents,
 		{
+			id: generateUniqueId(),
 			role: 'developer',
 			content: message,
 			timestamp: Date.now(),
@@ -55,7 +56,7 @@ export function normalizeAgentName(name: string | null | undefined): string {
 export function getGlobalChatlog(
 	agents: { getMessageLog: () => TimestampedMessage[] }[]
 ): TimestampedMessage[] {
-	const allowed_roles = ['user', 'assistant', 'developer'];
+	const allowed_roles = ['user', 'assistant'];
 	const allMessages = [
 		...agents.flatMap((agent) =>
 			agent
@@ -71,14 +72,7 @@ export function getGlobalChatlog(
 
 	// Deduplicate messages based on content, timestamp, and name
 	const uniqueMessages = allMessages.filter(
-		(message, index, self) =>
-			index ===
-			self.findIndex(
-				(m) =>
-					m.content === message.content &&
-					m.timestamp === message.timestamp &&
-					m.name === message.name
-			)
+		(message, index, self) => index === self.findIndex((m) => m.id === message.id)
 	);
 
 	return uniqueMessages.sort((a, b) => a.timestamp - b.timestamp);
