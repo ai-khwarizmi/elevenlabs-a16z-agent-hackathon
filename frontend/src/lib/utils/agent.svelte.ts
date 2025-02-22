@@ -9,6 +9,8 @@ import { fal } from '@fal-ai/client';
 import { uid } from 'uid';
 import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
+import { createVoice } from '../api/ai/elevenlabs.svelte';
+import { storeVoiceId, getVoiceId } from '../storage/voice';
 
 // Interface for a todo item
 interface Todo {
@@ -34,6 +36,7 @@ export class Agent {
 	private messageLog = $state<ChatCompletionMessageParam[]>([]);
 	private profilePicture = $state<string | null>(null);
 	private todos = $state<Todo[]>([]);
+	private elevenLabsVoiceId = $state<string | null>(null);
 
 	private openai: OpenAI;
 
@@ -53,8 +56,9 @@ export class Agent {
 		const { openaiKey } = getStoredKeys();
 		this.openai = createOpenAI(openaiKey);
 
-		// Initialize profile picture
+		// Initialize profile picture and voice
 		this.initProfilePicture();
+		this.initVoice();
 	}
 
 	/**
@@ -283,9 +287,47 @@ export class Agent {
 	}
 
 	/**
-	 * Delete a todo
+	 * Get the voice description used to generate the agent's voice
 	 */
-	deleteTodo(todoId: string): void {
-		this.todos = this.todos.filter((t) => t.id !== todoId);
+	getVoiceDescription(): string {
+		return `${this.name} with the following personality: ${this.personality}`;
+	}
+
+	private async initVoice(): Promise<void> {
+		console.log('Initializing voice');
+		try {
+			console.log('Getting voice description');
+			const description = this.getVoiceDescription();
+
+			// First try to get from IndexedDB
+			console.log('Getting voice ID from IndexedDB');
+			const storedVoiceId = await getVoiceId(description);
+			if (storedVoiceId) {
+				this.elevenLabsVoiceId = storedVoiceId;
+				console.log('Voice ID found in IndexedDB: ', storedVoiceId);
+				return;
+			}
+
+			// If not found, generate new voice
+			const { elevenLabsKey } = getStoredKeys();
+			if (!elevenLabsKey) {
+				console.log('No ElevenLabs API key found');
+				return;
+			}
+
+			const voiceId = await createVoice(description, elevenLabsKey);
+			await storeVoiceId(description, voiceId);
+			this.elevenLabsVoiceId = voiceId;
+		} catch (error) {
+			console.error('Failed to generate/store voice:', error);
+			this.elevenLabsVoiceId = null;
+		}
+	}
+
+	/**
+	 * Get the agent's voice ID
+	 */
+	getVoiceId(): string | null {
+		return this.elevenLabsVoiceId;
 	}
 }
