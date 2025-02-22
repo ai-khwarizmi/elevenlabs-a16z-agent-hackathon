@@ -12,6 +12,7 @@ import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
 import { createVoice } from '../api/ai/elevenlabs.svelte';
 import { storeVoiceId, getVoiceId } from '../storage/voice';
 import { getTool } from './tool-registry.svelte';
+import { createMachine, interpret } from 'xstate';
 
 // Interface for a todo item
 interface Todo {
@@ -25,6 +26,8 @@ interface Todo {
 	completedAt?: Date;
 }
 
+type AgentState = 'IDLE' | 'VOICE_ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
+
 interface SerializedAgent {
 	id: string;
 	name: string;
@@ -35,7 +38,46 @@ interface SerializedAgent {
 	profilePicture: string | null;
 	todos: Todo[];
 	elevenLabsVoiceId: string | null;
+	state: AgentState;
 }
+
+// Create the state machine
+const createAgentMachine = (initialState?: AgentState) =>
+	createMachine({
+		id: 'agent',
+		initial: initialState || 'IDLE',
+		context: {},
+		states: {
+			IDLE: {
+				on: {
+					ACTIVATE_VOICE: 'VOICE_ACTIVE',
+					LEAVE: 'LEFT_CALL'
+				}
+			},
+			VOICE_ACTIVE: {
+				on: {
+					GO_IDLE: 'IDLE',
+					START_WORK: 'WORKING'
+				}
+			},
+			LEFT_CALL: {
+				on: {
+					GO_IDLE: 'IDLE'
+				}
+			},
+			WORKING: {
+				on: {
+					RETURN_TO_VOICE: 'VOICE_ACTIVE',
+					RAISE_HAND: 'RAISED_HAND'
+				}
+			},
+			RAISED_HAND: {
+				on: {
+					RETURN_TO_WORK: 'WORKING'
+				}
+			}
+		}
+	});
 
 /**
  * Class representing an AI agent with a name, personality, and set of tools
@@ -50,10 +92,17 @@ export class Agent {
 	private profilePicture = $state<string | null>(null);
 	private todos = $state<Todo[]>([]);
 	private elevenLabsVoiceId = $state<string | null>(null);
+	private state = $state<AgentState>('IDLE');
+	private stateMachine: ReturnType<typeof interpret>;
 
 	private openai: OpenAI | null = null;
 
-	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
+	constructor(
+		name: string,
+		personality: string,
+		tools: Tool[],
+		options?: { id?: string; initialState?: AgentState }
+	) {
 		this.id = options?.id ?? uid();
 		this.name = name;
 		this.personality = personality;
@@ -64,6 +113,13 @@ export class Agent {
 				content: personality
 			}
 		];
+
+		// Initialize state machine with the correct initial state
+		const machine = createAgentMachine(options?.initialState);
+		this.stateMachine = interpret(machine).start();
+		this.stateMachine.subscribe((state) => {
+			this.state = state.value as AgentState;
+		});
 
 		// Initialize profile picture and voice
 		this.initProfilePicture();
@@ -359,7 +415,8 @@ export class Agent {
 			messageLog: this.messageLog,
 			profilePicture: this.profilePicture,
 			todos: this.todos,
-			elevenLabsVoiceId: this.elevenLabsVoiceId
+			elevenLabsVoiceId: this.elevenLabsVoiceId,
+			state: this.state
 		};
 	}
 
@@ -368,7 +425,10 @@ export class Agent {
 	 */
 	static fromJSON(json: SerializedAgent): Agent {
 		try {
-			const agent = new Agent(json.name, json.personality, [], { id: json.id });
+			const agent = new Agent(json.name, json.personality, [], {
+				id: json.id,
+				initialState: json.state
+			});
 			agent.toolIds = json.toolIds;
 			agent.isActive = json.isActive;
 			agent.messageLog = json.messageLog;
@@ -396,5 +456,69 @@ export class Agent {
 			console.warn('Failed to create agent from JSON:', error);
 			throw error;
 		}
+	}
+
+	/**
+	 * Get the current state of the agent
+	 */
+	getState(): AgentState {
+		return this.state;
+	}
+
+	/**
+	 * Safely attempt a state transition, throwing an error if invalid
+	 */
+	private safeTransition(eventType: string): void {
+		const validTransitions: Record<AgentState, string[]> = {
+			IDLE: ['ACTIVATE_VOICE', 'LEAVE'],
+			VOICE_ACTIVE: ['GO_IDLE', 'START_WORK'],
+			LEFT_CALL: ['GO_IDLE'],
+			WORKING: ['RETURN_TO_VOICE', 'RAISE_HAND'],
+			RAISED_HAND: ['RETURN_TO_WORK']
+		};
+
+		const currentState = this.state;
+		const allowedEvents = validTransitions[currentState];
+
+		if (!allowedEvents.includes(eventType)) {
+			throw new Error(
+				`Invalid transition: Cannot transition from '${currentState}' with event '${eventType}'. Valid events are: ${allowedEvents.join(
+					', '
+				)}`
+			);
+		}
+
+		this.stateMachine.send(eventType);
+	}
+
+	/**
+	 * State transition methods
+	 */
+	makeIdle(): void {
+		this.safeTransition('GO_IDLE');
+	}
+
+	makeVoiceActive(): void {
+		this.safeTransition('ACTIVATE_VOICE');
+	}
+
+	leaveCall(): void {
+		this.safeTransition('LEAVE');
+	}
+
+	startWorking(): void {
+		this.safeTransition('START_WORK');
+	}
+
+	raiseHand(): void {
+		this.safeTransition('RAISE_HAND');
+	}
+
+	returnToVoice(): void {
+		this.safeTransition('RETURN_TO_VOICE');
+	}
+
+	returnToWork(): void {
+		this.safeTransition('RETURN_TO_WORK');
 	}
 }
