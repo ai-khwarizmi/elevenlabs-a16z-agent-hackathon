@@ -237,6 +237,10 @@ export class Agent {
 		// Initialize profile picture and voice
 		this.initProfilePicture();
 		this.initVoice();
+		addAiJoinEvent({
+			name: this.getName(),
+			personality: this.getPersonality()
+		});
 	}
 
 	/**
@@ -650,11 +654,6 @@ export class Agent {
 
 	makeTextActive(): void {
 		this.safeTransition('ACTIVATE_TEXT');
-		addAiJoinEvent({
-			name: this.getName(),
-			model: 'gpt-4o',
-			personality: this.getPersonality()
-		});
 		this.initiateTextChat();
 	}
 

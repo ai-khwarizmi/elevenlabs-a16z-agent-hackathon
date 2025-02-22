@@ -221,10 +221,6 @@ export const agents = {
 			sessions.current.agents.push(agent);
 			sessions.current.lastModified = new Date().toISOString();
 			saveSession(sessions.current);
-			addAiJoinEvent({
-				name: agent.getName(),
-				personality: agent.getPersonality()
-			});
 		}
 	},
 	removeAgent(name: string): void {
