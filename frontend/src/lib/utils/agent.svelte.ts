@@ -11,7 +11,7 @@ import { storeProfilePicture, getProfilePicture } from '$lib/storage/indexeddb';
 import type { Tool, ToolArgs, ToolResult } from './tool.svelte';
 
 // Interface for a todo item
-interface TodoItem {
+interface Todo {
 	id: string;
 	title: string;
 	description: string;
@@ -31,11 +31,11 @@ export class Agent {
 	private personality: string;
 	private tools: Tool[];
 	private isActive = $state(false);
-	private messageLog: ChatCompletionMessageParam[];
+	private messageLog = $state<ChatCompletionMessageParam[]>([]);
 	private profilePicture = $state<string | null>(null);
+	private todos = $state<Todo[]>([]);
 
 	private openai: OpenAI;
-	private todos: TodoItem[] = [];
 
 	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
 		this.id = options?.id ?? uid();
@@ -230,48 +230,62 @@ export class Agent {
 	}
 
 	/**
-	 * Get all todos for this agent
+	 * Get the agent's todos
 	 */
-	getTodos(): TodoItem[] {
+	getTodos(): Todo[] {
 		return this.todos;
 	}
 
 	/**
-	 * Add a new todo
+	 * Add a todo to the agent's todos
 	 */
-	addTodo(todo: Omit<TodoItem, 'id' | 'createdAt' | 'status'>): TodoItem {
-		const newTodo: TodoItem = {
-			...todo,
-			id: uid(),
-			status: 'pending',
-			createdAt: new Date()
-		};
-		this.todos.push(newTodo);
-		return newTodo;
+	addTodo(todo: Omit<Todo, 'id' | 'createdAt' | 'status'>): void {
+		this.todos = [
+			...this.todos,
+			{
+				...todo,
+				id: uid(),
+				createdAt: new Date(),
+				status: 'pending'
+			}
+		];
 	}
 
 	/**
 	 * Complete a todo
 	 */
-	completeTodo(todoId: string): TodoItem | null {
-		const todo = this.todos.find((t) => t.id === todoId);
-		if (todo) {
-			todo.status = 'completed';
-			todo.completedAt = new Date();
+	completeTodo(todoId: string): Todo | null {
+		const index = this.todos.findIndex((t) => t.id === todoId);
+		if (index !== -1) {
+			const todo = this.todos[index];
+			this.todos.splice(index, 1);
 			return todo;
 		}
 		return null;
 	}
 
 	/**
-	 * Update todo priority
+	 * Update a todo
 	 */
-	updateTodoPriority(todoId: string, priority: TodoItem['priority']): TodoItem | null {
-		const todo = this.todos.find((t) => t.id === todoId);
-		if (todo) {
-			todo.priority = priority;
-			return todo;
+	updateTodo(todo: Todo): void {
+		this.todos = this.todos.map((t) => (t.id === todo.id ? todo : t));
+	}
+	/**
+	 * Update a todo's priority
+	 */
+	updateTodoPriority(todoId: string, priority: Todo['priority']): Todo | null {
+		const index = this.todos.findIndex((t) => t.id === todoId);
+		if (index !== -1) {
+			this.todos[index].priority = priority;
+			return this.todos[index];
 		}
 		return null;
+	}
+
+	/**
+	 * Delete a todo
+	 */
+	deleteTodo(todoId: string): void {
+		this.todos = this.todos.filter((t) => t.id !== todoId);
 	}
 }
