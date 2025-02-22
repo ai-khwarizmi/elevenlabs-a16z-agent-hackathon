@@ -136,16 +136,16 @@
 
 {#if hasFiles}
 	<div
-		class="fixed bottom-0 left-0 z-50 flex h-64 transition-transform duration-300"
+		class="fixed bottom-0 left-0 z-50 flex h-64 transition-transform duration-300 text-white"
 		class:translate-y-0={isExpanded}
 		class:translate-y-64={!isExpanded}
 	>
-		<div class="flex h-full w-[800px] flex-col rounded-tr-lg bg-white shadow-lg">
+		<div class="flex h-full w-[800px] flex-col bg-black shadow-lg">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-gray-200 bg-gray-50 p-2">
+			<div class="flex items-center justify-between border-b border-white bg-black p-2">
 				<div class="flex items-center gap-2">
 					<button
-						class="rounded p-1 hover:bg-gray-200"
+						class="rounded p-1 hover:bg-gray-800"
 						onclick={navigateUp}
 						disabled={currentPath === '/'}
 					>
@@ -167,7 +167,7 @@
 					<span class="text-sm font-medium">{currentPath || '/'}</span>
 				</div>
 				<button
-					class="rounded p-1 hover:bg-gray-200"
+					class="rounded p-1 hover:bg-gray-800"
 					onclick={() => (isExpanded = !isExpanded)}
 					aria-label={isExpanded ? 'Hide explorer' : 'Show explorer'}
 				>
@@ -192,20 +192,21 @@
 			<!-- Content -->
 			<div class="flex h-full">
 				<!-- File Tree -->
-				<div class="w-1/3 overflow-y-auto border-r border-gray-200 p-2">
+				<div class="w-1/3 overflow-y-auto border-r border-white p-2">
 					{#if isLoading}
 						<div class="flex items-center justify-center p-4">
 							<div
-								class="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-blue-600"
-							/>
+								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-white"
+							>
+							</div>
 						</div>
 					{:else}
 						<div class="space-y-1">
 							{#each files as file}
 								{@const isDirectory = fileStats[file]}
 								<button
-									class="group flex w-full items-center gap-2 rounded p-1 text-left text-sm hover:bg-gray-100"
-									class:bg-blue-50={selectedFile === joinPaths(currentPath, file)}
+									class="group flex w-full items-center gap-2 rounded p-1 text-left text-sm hover:bg-gray-800"
+									class:bg-gray-800={selectedFile === joinPaths(currentPath, file)}
 									onclick={() => loadFileContent(joinPaths(currentPath, file))}
 								>
 									<div class="relative flex items-center">
@@ -213,7 +214,7 @@
 											<!-- Folder Arrow -->
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
-												class="absolute -left-1 h-3 w-3 text-gray-400 opacity-0 transition-opacity group-hover:opacity-100"
+												class="absolute -left-1 h-3 w-3 text-white opacity-0 transition-opacity group-hover:opacity-100"
 												fill="none"
 												viewBox="0 0 24 24"
 												stroke="currentColor"
@@ -261,7 +262,7 @@
 									<span class="relative pl-1">
 										{file}
 										{#if isDirectory}
-											<span class="ml-1 text-xs text-gray-400">/</span>
+											<span class="ml-1 text-xs text-white">/</span>
 										{/if}
 									</span>
 								</button>
@@ -275,11 +276,11 @@
 					{#if selectedFile && fileContent !== null}
 						<iframe
 							title="File Preview"
-							class="h-full w-full rounded border border-gray-200"
+							class="h-full w-full rounded border border-white"
 							srcdoc={fileContent}
 						/>
 					{:else}
-						<div class="flex h-full items-center justify-center text-gray-500">
+						<div class="flex h-full items-center justify-center text-white">
 							Select a file to preview
 						</div>
 					{/if}
