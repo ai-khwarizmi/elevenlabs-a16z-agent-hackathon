@@ -19,7 +19,7 @@
 	});
 </script>
 
-<div class="fixed right-2 top-2 font-mono text-sm">
+<div class="fixed right-2 bottom-2 font-mono text-sm">
 	Task took: {executionTime.toFixed(1)}ms
 </div>
 

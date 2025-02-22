@@ -1,6 +1,5 @@
 <script lang="ts">
-	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
-	import { createHelperAgent } from '$lib/api/agents/helper';
+	import TopBar from '$lib/components/TopBar.svelte';
 	import { getStoredKeys } from '$lib/storage/keys';
 	import { agents } from '$lib/stores/agents.svelte';
 	import { Agent } from '$lib/utils/agent.svelte';
@@ -9,26 +8,19 @@
 	let isProcessing = $state(false);
 	let response = $state('');
 	let error = $state('');
-	let helperAgent = $state<ReturnType<typeof createHelperAgent> | null>(null);
 
 	let currentAgents = $derived(agents.list);
-
-	// Initialize helper agent when OpenAI API key is available
-	$effect(() => {
-		const { openaiKey } = getStoredKeys();
-		if (openaiKey && !helperAgent) {
-			try {
-				helperAgent = createHelperAgent();
-			} catch (err) {
-				error = 'Failed to initialize helper agent';
-				console.error(err);
-			}
-		}
-	});
+	let helperAgent = $derived(currentAgents.find((agent) => agent.getName() === 'Helper'));
 
 	async function handleSearch() {
 		if (!searchQuery.trim()) return;
 		if (!helperAgent) {
+			error = 'Helper agent not found. Please refresh the page.';
+			return;
+		}
+
+		const { openaiKey } = getStoredKeys();
+		if (!openaiKey) {
 			error = 'Please enter your OpenAI API key first';
 			return;
 		}
@@ -48,7 +40,7 @@
 	}
 </script>
 
-<ApiKeyInputs />
+<TopBar />
 
 <div class="flex min-h-screen flex-col items-center justify-center px-4">
 	<!-- Agents Display Section -->
@@ -71,12 +63,12 @@
 			<input
 				type="text"
 				bind:value={searchQuery}
-				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+				class="w-full rounded-full border border-gray-300 px-5 py-3 text-lg shadow-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-500 focus:outline-none"
 				placeholder="What can we help you with?"
 				onkeydown={(e) => e.key === 'Enter' && handleSearch()}
 			/>
 			<button
-				class="absolute right-3 top-1/2 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+				class="absolute top-1/2 right-3 -translate-y-1/2 p-2 text-gray-500 hover:text-gray-700 disabled:opacity-50"
 				onclick={handleSearch}
 				disabled={isProcessing}
 				aria-label="Search"

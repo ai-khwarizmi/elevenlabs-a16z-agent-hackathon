@@ -52,6 +52,13 @@ export class Tool {
 	}
 
 	/**
+	 * Get the tool's unique ID
+	 */
+	getId(): string {
+		return this.definition.name;
+	}
+
+	/**
 	 * Get the OpenAI-compatible function definition
 	 */
 	getDefinition(): ChatCompletionTool {
