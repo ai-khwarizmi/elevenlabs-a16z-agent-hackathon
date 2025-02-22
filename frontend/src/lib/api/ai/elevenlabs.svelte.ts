@@ -1,20 +1,27 @@
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { Tool } from '$lib/utils/tool.svelte';
-import { ElevenLabsClient } from 'elevenlabs';
+
+interface VoicePreview {
+	generated_voice_id: string;
+	duration_secs: number;
+	media_type: string;
+}
 
 export async function createOrPickRandomVoice(
 	name: string,
 	description: string,
 	apiKey: string
 ): Promise<string> {
-	const client = new ElevenLabsClient({
-		apiKey
+	// Get existing voices
+	const voicesResponse = await fetch('https://api.elevenlabs.io/v1/voices', {
+		headers: {
+			'xi-api-key': apiKey
+		}
 	});
-
-	const existingVoices = await client.voices.getAll();
+	const existingVoices = await voicesResponse.json();
 	console.log('Existing voices:', existingVoices);
 
-	// if mroe than 10, pick a random one
+	// if more than 10, pick a random one
 	if (existingVoices.voices.length > 10) {
 		const randomVoice =
 			existingVoices.voices[Math.floor(Math.random() * existingVoices.voices.length)];
@@ -27,14 +34,26 @@ export async function createOrPickRandomVoice(
 			'Every act of kindness, no matter how small, carries value and can make a difference, as no gesture of goodwill is ever wasted.';
 
 		// Create voice previews
-		const result = await client.textToVoice.createPreviews({
-			voice_description: description,
-			text
-		});
+		const previewResponse = await fetch(
+			'https://api.elevenlabs.io/v1/voice-generation/generate-voice',
+			{
+				method: 'POST',
+				headers: {
+					'xi-api-key': apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					voice_description: description,
+					text
+				})
+			}
+		);
+
+		const result = await previewResponse.json();
 
 		console.log('Voice preview results:', {
 			numberOfPreviews: result.previews?.length || 0,
-			previews: result.previews?.map((preview) => ({
+			previews: result.previews?.map((preview: VoicePreview) => ({
 				voiceId: preview.generated_voice_id,
 				duration: preview.duration_secs,
 				mediaType: preview.media_type
@@ -46,15 +65,26 @@ export async function createOrPickRandomVoice(
 			throw new Error('No voice previews generated');
 		}
 
-		const voice = await client.textToVoice.createVoiceFromPreview({
-			generated_voice_id: result.previews[0].generated_voice_id,
-			voice_description: description.slice(0, 500), // TODO: better handling of description limitations
-			voice_name: name
-		});
+		// Create voice from preview
+		const voiceResponse = await fetch(
+			'https://api.elevenlabs.io/v1/voice-generation/create-voice',
+			{
+				method: 'POST',
+				headers: {
+					'xi-api-key': apiKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					generated_voice_id: result.previews[0].generated_voice_id,
+					voice_description: description.slice(0, 500), // TODO: better handling of description limitations
+					voice_name: name
+				})
+			}
+		);
 
+		const voice = await voiceResponse.json();
 		console.log('Voice created:', voice);
 
-		// Return the first generated voice ID
 		return voice.voice_id;
 	} catch (error) {
 		console.error('Failed to create voice:', error);
