@@ -120,7 +120,7 @@
 
 <div class="relative inline-block font-mono whitespace-pre-wrap">
 	<!-- The invisible text that maintains layout -->
-	<span class="invisible">{text}</span>
+	<span class="{className} invisible">{text}</span>
 	<!-- The animated scramble text -->
 	<span class="{className} absolute inset-0">{displayText}</span>
 </div>
