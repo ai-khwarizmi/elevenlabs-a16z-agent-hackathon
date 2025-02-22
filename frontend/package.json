@@ -34,5 +34,8 @@
 		"typescript-eslint": "^8.20.0",
 		"vite": "^6.0.0",
 		"wrangler": "^3.109.2"
+	},
+	"dependencies": {
+		"openai": "^4.85.3"
 	}
 }
