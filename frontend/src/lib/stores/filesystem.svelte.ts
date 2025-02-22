@@ -5,12 +5,18 @@ let fs = $state<FSModule | null>(null);
 let initialized = $state(false);
 let error = $state<Error | null>(null);
 let currentSessionId = $state<string | null>(null);
+let lastUpdate = $state(Date.now());
 
 // Extend Window interface to include BrowserFS
 declare global {
 	interface Window {
 		BrowserFS?: BrowserFSType;
 	}
+}
+
+// Function to trigger an update
+function triggerUpdate() {
+	lastUpdate = Date.now();
 }
 
 /**
@@ -104,14 +110,57 @@ async function switchSession(sessionId: string) {
 }
 
 /**
+ * Create directory and its parents recursively
+ */
+async function mkdirp(path: string): Promise<void> {
+	if (!fs || !initialized) await init();
+
+	const parts = path.split('/').filter(Boolean);
+	let currentPath = '';
+
+	for (const part of parts) {
+		currentPath += '/' + part;
+		try {
+			const exists = await new Promise<boolean>((resolve) => {
+				fs!.exists(currentPath, resolve);
+			});
+			if (!exists) {
+				await new Promise<void>((resolve, reject) => {
+					fs!.mkdir(currentPath, (err?: Error) => {
+						if (err) reject(err);
+						else {
+							triggerUpdate();
+							resolve();
+						}
+					});
+				});
+			}
+		} catch (error) {
+			console.error(`Failed to create directory ${currentPath}:`, error);
+			throw error;
+		}
+	}
+}
+
+/**
  * Write a file to the virtual file system
  */
 async function writeFile(path: string, content: string | Buffer): Promise<void> {
 	if (!fs || !initialized) await init();
+
+	// Create parent directory if it doesn't exist
+	const parentDir = path.split('/').slice(0, -1).join('/') || '/';
+	if (parentDir !== '/') {
+		await mkdirp(parentDir);
+	}
+
 	return new Promise((resolve, reject) => {
 		fs!.writeFile(path, content, (err?: Error) => {
 			if (err) reject(err);
-			else resolve();
+			else {
+				triggerUpdate();
+				resolve();
+			}
 		});
 	});
 }
@@ -166,7 +215,10 @@ async function mkdir(path: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		fs!.mkdir(path, (err?: Error) => {
 			if (err) reject(err);
-			else resolve();
+			else {
+				triggerUpdate();
+				resolve();
+			}
 		});
 	});
 }
@@ -179,7 +231,10 @@ async function unlink(path: string): Promise<void> {
 	return new Promise((resolve, reject) => {
 		fs!.unlink(path, (err?: Error) => {
 			if (err) reject(err);
-			else resolve();
+			else {
+				triggerUpdate();
+				resolve();
+			}
 		});
 	});
 }
@@ -203,6 +258,7 @@ export const filesystem = {
 	readdir,
 	stat,
 	mkdir,
+	mkdirp,
 	unlink,
 	exists,
 	switchSession,
@@ -214,5 +270,8 @@ export const filesystem = {
 	},
 	get currentSessionId() {
 		return currentSessionId;
+	},
+	get lastUpdate() {
+		return lastUpdate;
 	}
 };

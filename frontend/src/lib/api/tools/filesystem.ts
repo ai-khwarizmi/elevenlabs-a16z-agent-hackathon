@@ -13,6 +13,7 @@ export const filesystemTool = new Tool(
 - Check if files exist
 - Create and delete directories
 - Get file information
+- You do not need to create the directory, it will be created if it does not exist.
 All files are session-specific and persist between conversations within the same session.`,
 		parameters: {
 			type: 'object',
@@ -21,7 +22,7 @@ All files are session-specific and persist between conversations within the same
 					name: 'command',
 					description: 'The operation to perform',
 					type: 'string',
-					enum: ['read', 'write', 'list', 'exists', 'delete', 'mkdir', 'stat']
+					enum: ['read', 'write', 'list', 'exists', 'delete', 'stat']
 				},
 				path: {
 					name: 'path',

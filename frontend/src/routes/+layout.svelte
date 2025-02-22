@@ -3,6 +3,7 @@
 	import ChatTranscript from '$lib/components/ChatTranscript.svelte';
 	import TopBar from '$lib/components/TopBar.svelte';
 	import FilesystemManager from '$lib/components/FilesystemManager.svelte';
+	import FileExplorer from '$lib/components/FileExplorer.svelte';
 	import '../app.css';
 
 	let { children } = $props();
@@ -19,3 +20,4 @@
 	{@render children()}
 </div>
 <ChatTranscript bind:isExpanded={isTranscriptExpanded} />
+<FileExplorer />
