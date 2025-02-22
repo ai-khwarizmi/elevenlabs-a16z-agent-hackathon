@@ -251,6 +251,104 @@ async function exists(path: string): Promise<boolean> {
 	});
 }
 
+/**
+ * Download a file from a URL and store it in the virtual filesystem
+ *
+ * This function handles downloading files through a server-side proxy to avoid CORS issues.
+ * It automatically manages file naming and storage in the virtual filesystem.
+ *
+ * @param url - The URL of the file to download
+ * @param targetPath - Optional custom path where the file should be stored
+ *                    If not provided, the file will be stored in the root with its original name
+ *
+ * @returns Promise<{path: string, filename: string}>
+ *          - path: The final path where the file was stored in the virtual filesystem
+ *          - filename: The name of the file (either from the source or generated)
+ *
+ * @throws Error if:
+ *         - The filesystem is not initialized
+ *         - The URL is invalid
+ *         - The download fails
+ *         - Writing to the virtual filesystem fails
+ *
+ * @example
+ * ```typescript
+ * // Download with automatic path
+ * const { path, filename } = await filesystem.downloadFile('https://example.com/document.pdf');
+ *
+ * // Download with custom path
+ * const result = await filesystem.downloadFile(
+ *   'https://example.com/document.pdf',
+ *   '/documents/custom-name.pdf'
+ * );
+ * ```
+ */
+async function downloadFile(
+	url: string,
+	targetPath?: string
+): Promise<{ path: string; filename: string }> {
+	if (!fs || !initialized) await init();
+
+	try {
+		// Validate URL format before attempting download
+		try {
+			new URL(url);
+		} catch {
+			throw new Error('Invalid URL format');
+		}
+
+		const response = await fetch('/api/download', {
+			method: 'POST',
+			headers: {
+				'Content-Type': 'application/json'
+			},
+			body: JSON.stringify({ url })
+		});
+
+		if (!response.ok) {
+			const errorText = await response.text().catch(() => 'Unknown error');
+			throw new Error(`Download failed: ${response.status} - ${errorText}`);
+		}
+
+		// Get filename from response headers
+		const filename = response.headers.get('x-filename') || 'downloaded_file';
+
+		// Determine the final path where the file will be stored
+		let storagePath = targetPath || `/${filename}`;
+
+		// Check if path already exists
+		const fileExists = await exists(storagePath);
+		if (fileExists) {
+			// Generate unique name by appending number
+			const ext = filename.includes('.') ? `.${filename.split('.').pop()}` : '';
+			const base = filename.includes('.') ? filename.slice(0, -ext.length) : filename;
+			let counter = 1;
+
+			while (await exists(storagePath)) {
+				storagePath = targetPath || `/${base}_${counter}${ext}`;
+				counter++;
+			}
+		}
+
+		// Get the content as text (either plain text or base64-encoded binary)
+		const content = await response.text();
+
+		// Write the file to the virtual filesystem
+		await writeFile(storagePath, content);
+
+		// Trigger update to notify listeners
+		triggerUpdate();
+
+		return {
+			path: storagePath,
+			filename: storagePath.split('/').pop() || filename
+		};
+	} catch (error) {
+		console.error('Failed to download file:', error);
+		throw error instanceof Error ? error : new Error('Failed to download file');
+	}
+}
+
 export const filesystem = {
 	init,
 	writeFile,
@@ -262,6 +360,7 @@ export const filesystem = {
 	unlink,
 	exists,
 	switchSession,
+	downloadFile,
 	get error() {
 		return error;
 	},

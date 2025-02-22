@@ -13,6 +13,7 @@ export const filesystemTool = new Tool(
 - Check if files exist
 - Create and delete directories
 - Get file information
+- Download files from URLs and store them in the filesystem
 - You do not need to create the directory, it will be created if it does not exist.
 All files are session-specific and persist between conversations within the same session.`,
 		parameters: {
@@ -22,17 +23,22 @@ All files are session-specific and persist between conversations within the same
 					name: 'command',
 					description: 'The operation to perform',
 					type: 'string',
-					enum: ['read', 'write', 'list', 'exists', 'delete', 'stat']
+					enum: ['read', 'write', 'list', 'exists', 'delete', 'stat', 'download']
 				},
 				path: {
 					name: 'path',
 					description:
-						'The file or directory path to operate on (e.g., "/notes/todo.txt" or "/projects")',
+						'The file or directory path to operate on (e.g., "/notes/todo.txt" or "/projects"). For download operations, this is the target path where the file should be saved (optional).',
 					type: 'string'
 				},
 				content: {
 					name: 'content',
 					description: 'For write operations, the content to write to the file',
+					type: 'string'
+				},
+				url: {
+					name: 'url',
+					description: 'For download operations, the URL of the file to download',
 					type: 'string'
 				}
 			},
@@ -129,6 +135,23 @@ All files are session-specific and persist between conversations within the same
 							created: stats.birthtime
 						},
 						message: `Got stats for ${path}`
+					};
+				}
+
+				case 'download': {
+					const { url } = args;
+					if (typeof url !== 'string') {
+						return {
+							success: false,
+							message: 'URL must be a string'
+						};
+					}
+					const result = await filesystem.downloadFile(url, path);
+					return {
+						success: true,
+						path: result.path,
+						filename: result.filename,
+						message: `Successfully downloaded file to ${result.path}`
 					};
 				}
 
