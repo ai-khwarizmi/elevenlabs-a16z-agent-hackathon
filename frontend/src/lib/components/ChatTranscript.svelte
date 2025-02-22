@@ -18,24 +18,6 @@
 	class:translate-x-0={isExpanded}
 	class:translate-x-96={!isExpanded}
 >
-	<!-- Toggle button -->
-	<button
-		class="absolute top-4 -left-10 rounded-l-lg bg-gray-100 p-2 shadow-md hover:bg-gray-200"
-		onclick={() => (isExpanded = !isExpanded)}
-		aria-label={isExpanded ? 'Hide transcript' : 'Show transcript'}
-	>
-		<svg
-			xmlns="http://www.w3.org/2000/svg"
-			class="h-6 w-6 transition-transform duration-300"
-			class:rotate-180={!isExpanded}
-			fill="none"
-			viewBox="0 0 24 24"
-			stroke="currentColor"
-		>
-			<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
-		</svg>
-	</button>
-
 	<!-- Transcript panel -->
 	<div class="h-full w-96 bg-white shadow-lg">
 		<!-- Header -->
@@ -44,7 +26,7 @@
 		</div>
 
 		<!-- Messages -->
-		<div class="flex h-[calc(100vh-4rem)] flex-col overflow-y-auto p-4">
+		<div class="flex h-[calc(100vh-8rem)] flex-col overflow-y-auto p-4">
 			<div class="flex-1 space-y-4">
 				{#each messages as message}
 					<div class="flex flex-col gap-1">
@@ -68,6 +50,31 @@
 					<div class="flex h-full items-center justify-center text-gray-500">No messages yet</div>
 				{/each}
 			</div>
+		</div>
+
+		<!-- Footer with toggle button -->
+		<div class="relative border-t border-gray-200 bg-gray-50 p-4">
+			<button
+				class="absolute bottom-4 -left-10 rounded-l-lg bg-gray-100 p-2 shadow-md hover:bg-gray-200"
+				onclick={() => (isExpanded = !isExpanded)}
+				aria-label={isExpanded ? 'Hide transcript' : 'Show transcript'}
+			>
+				<svg
+					xmlns="http://www.w3.org/2000/svg"
+					class="h-6 w-6 transition-transform duration-300"
+					class:rotate-180={!isExpanded}
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+				>
+					<path
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						stroke-width="2"
+						d="M15 19l-7-7 7-7"
+					/>
+				</svg>
+			</button>
 		</div>
 	</div>
 </div>
