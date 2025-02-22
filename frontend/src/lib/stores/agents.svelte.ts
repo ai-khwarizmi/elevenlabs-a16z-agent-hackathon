@@ -32,28 +32,15 @@ function getSessionKey(id: string): string {
  */
 let sessionList = $state<Session[]>([]);
 let currentSessionId = $state<string | null>(null);
-let saveTimeout: number | null = null;
 
-// Debounced save function
-function debouncedSave(session: Session) {
-	if (saveTimeout) {
-		clearTimeout(saveTimeout);
+async function autoSave() {
+	if (sessions.current) {
+		saveSession(sessions.current);
 	}
-
-	saveTimeout = setTimeout(() => {
-		saveSession(session);
-		saveTimeout = null;
-	}, 1000) as unknown as number;
+	setTimeout(autoSave, 1000);
 }
 
-// Use derived state to watch for changes in the current session
-const currentSession = $derived.by<Session | undefined>(() => {
-	const session = currentSessionId ? sessionList.find((s) => s.id === currentSessionId) : undefined;
-	if (session) {
-		debouncedSave(session);
-	}
-	return session;
-});
+setTimeout(autoSave, 1000);
 
 // Load sessions from localStorage on initialization
 if (typeof window !== 'undefined') {
@@ -148,7 +135,7 @@ export const sessions = {
 		return sessionList;
 	},
 	get current(): Session | undefined {
-		return currentSession;
+		return sessionList.find((s) => s.id === currentSessionId);
 	},
 	createSession(name: string): Session {
 		const session: Session = {
