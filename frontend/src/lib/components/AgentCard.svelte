@@ -2,14 +2,13 @@
 	import type { Agent } from '$lib/utils/agent.svelte';
 
 	let { agent } = $props<{ agent: Agent }>();
-	let isMessageLogVisible = $state(false);
+	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
-	let state = $derived(agent.getState());
+	let agentState = $derived(agent.getState());
 
-	// Reset visibility when agent changes
 	$effect(() => {
 		agent;
-		isMessageLogVisible = false;
+		showMessages = false;
 	});
 </script>
 
@@ -35,18 +34,18 @@
 					</span>
 					<span
 						class="rounded-full px-3 py-1 text-sm font-medium"
-						class:bg-gray-100={state === 'IDLE'}
-						class:text-gray-800={state === 'IDLE'}
-						class:bg-blue-100={state === 'VOICE_ACTIVE'}
-						class:text-blue-800={state === 'VOICE_ACTIVE'}
-						class:bg-red-100={state === 'LEFT_CALL'}
-						class:text-red-800={state === 'LEFT_CALL'}
-						class:bg-yellow-100={state === 'WORKING'}
-						class:text-yellow-800={state === 'WORKING'}
-						class:bg-purple-100={state === 'RAISED_HAND'}
-						class:text-purple-800={state === 'RAISED_HAND'}
+						class:bg-gray-100={agentState === 'IDLE'}
+						class:text-gray-800={agentState === 'IDLE'}
+						class:bg-blue-100={agentState === 'VOICE_ACTIVE'}
+						class:text-blue-800={agentState === 'VOICE_ACTIVE'}
+						class:bg-red-100={agentState === 'LEFT_CALL'}
+						class:text-red-800={agentState === 'LEFT_CALL'}
+						class:bg-yellow-100={agentState === 'WORKING'}
+						class:text-yellow-800={agentState === 'WORKING'}
+						class:bg-purple-100={agentState === 'RAISED_HAND'}
+						class:text-purple-800={agentState === 'RAISED_HAND'}
 					>
-						{state}
+						{agentState}
 					</span>
 				</div>
 			</div>
@@ -108,13 +107,13 @@
 	{#if messages.length > 0}
 		<div class="mt-4 flex items-center justify-between">
 			<button
-				onclick={() => (isMessageLogVisible = !isMessageLogVisible)}
+				onclick={() => (showMessages = !showMessages)}
 				class="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900"
 			>
 				<svg
 					xmlns="http://www.w3.org/2000/svg"
 					class="h-5 w-5 transition-transform duration-200"
-					class:rotate-90={isMessageLogVisible}
+					class:rotate-90={showMessages}
 					fill="none"
 					viewBox="0 0 24 24"
 					stroke="currentColor"
@@ -125,7 +124,7 @@
 			</button>
 		</div>
 		<!-- Message Log Section -->
-		{#if isMessageLogVisible}
+		{#if showMessages}
 			<div class="mt-2 space-y-2">
 				{#each messages as message}
 					<div class="rounded-lg bg-gray-50 p-3">
