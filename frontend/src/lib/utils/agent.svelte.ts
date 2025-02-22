@@ -373,7 +373,7 @@ export class Agent {
 	 * This function handles the entire conversation flow including tool execution
 	 */
 	async chat(userMessage: string | null): Promise<string> {
-		// Add user message to log
+		// Add user message to log if provided
 		if (userMessage !== null) {
 			this.messageLog = [
 				...this.messageLog,
@@ -410,31 +410,43 @@ export class Agent {
 				}
 			];
 
-			// If there's a function call, execute it
-			if (response.tool_calls) {
-				await Promise.all(
+			// If there's a function call, execute it and add results before continuing
+			if (response.tool_calls && response.tool_calls.length > 0) {
+				// Execute all tool calls in parallel and collect their results
+				const toolResults = await Promise.all(
 					response.tool_calls.map(async (toolCall) => {
 						const result = await this.executeTool(
 							toolCall.function.name,
 							JSON.parse(toolCall.function.arguments)
 						);
 
-						// Add tool result to message log with timestamp
-						this.messageLog = [
-							...this.messageLog,
-							{
-								role: 'tool',
-								name: normalizeAgentName(this.getName()),
-								tool_call_id: toolCall.id,
-								content: JSON.stringify(result),
-								timestamp: Date.now()
-							}
-						];
+						// Return both the tool call ID and the result
+						return {
+							tool_call_id: toolCall.id,
+							result
+						};
 					})
 				);
+
+				// Add each tool result to the message log
+				for (const { tool_call_id, result } of toolResults) {
+					this.messageLog = [
+						...this.messageLog,
+						{
+							role: 'tool',
+							name: normalizeAgentName(this.getName()),
+							tool_call_id,
+							content: JSON.stringify(result),
+							timestamp: Date.now()
+						}
+					];
+				}
+
+				// Continue the conversation to get AI's response to the tool results
 				continue;
 			}
 
+			// If no tool calls, return the response content
 			return response.content || '';
 		}
 	}
