@@ -46,6 +46,7 @@
 		"idb": "^8.0.2",
 		"marked": "^15.0.7",
 		"openai": "^4.85.3",
+		"svelte-dnd-action": "^0.9.57",
 		"tailwind-merge": "^3.0.2",
 		"uid": "^2.0.2"
 	}
