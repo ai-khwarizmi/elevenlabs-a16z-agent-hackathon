@@ -35,6 +35,7 @@ export const inviteTool = new Tool(
 
 		// Add the agent to the global state
 		agents.addAgent(newAgent);
+
 		agent.makeIdle();
 
 		return {
