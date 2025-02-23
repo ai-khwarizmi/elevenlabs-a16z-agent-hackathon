@@ -77,48 +77,52 @@ async function determineAndActivateNextAgent(
 
 async function mainLoop() {
 	while (true) {
-		// Get all agents from the store
-		const agentList: Agent[] = agents.list;
+		try {
+			// Get all agents from the store
+			const agentList: Agent[] = agents.list;
 
-		// Check if all agents are idle
-		const allIdle = agentList.every((agent: Agent) => agent.getState() === 'IDLE');
+			// Check if all agents are idle
+			const allIdle = agentList.every((agent: Agent) => agent.getState() === 'IDLE');
 
-		if (allIdle && agentList.length > 0) {
-			console.log('All agents are currently idle');
+			if (allIdle && agentList.length > 0) {
+				console.log('All agents are currently idle');
 
-			// Get the global transcript and determine next agent
-			const transcript = agents.getGlobalChatlog();
-			await determineAndActivateNextAgent(transcript, agentList);
+				// Get the global transcript and determine next agent
+				const transcript = agents.getGlobalChatlog();
+				await determineAndActivateNextAgent(transcript, agentList);
 
-			//wait 10 seconds before checking again
-			await new Promise((resolve) => setTimeout(resolve, 10000));
-		} else {
-			const activeAgent = agentList.find(
-				(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-			);
-			if (!activeAgent) {
-				console.log('No active agent found');
+				//wait 10 seconds before checking again
+				await new Promise((resolve) => setTimeout(resolve, 10000));
 			} else {
-				// handle hand-raising
-				console.log('need to figure out if any agents need to raise their hand');
-				const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
-				if (activeStartTimestamp) {
-					const timeSinceActive = Date.now() - activeStartTimestamp;
-					console.log('current agent has been active for ', timeSinceActive, 'ms');
-					const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
-					for (const agent of idleAgents) {
-						const urgency = await agent.considerRaisingHand();
-						if (urgency && urgency > 7) {
-							console.log('agent ', agent.getName(), ' raised hand with urgency ', urgency);
-							// kill the active agent, and make the new agent active
-							activeAgent.makeIdle();
-							agent.makeAgentActive();
-						}
-					}
+				const activeAgent = agentList.find(
+					(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+				);
+				if (!activeAgent) {
+					console.log('No active agent found');
 				} else {
-					console.log('current agent has not been active for long enough');
+					// handle hand-raising
+					console.log('need to figure out if any agents need to raise their hand');
+					const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
+					if (activeStartTimestamp) {
+						const timeSinceActive = Date.now() - activeStartTimestamp;
+						console.log('current agent has been active for ', timeSinceActive, 'ms');
+						const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
+						for (const agent of idleAgents) {
+							const urgency = await agent.considerRaisingHand();
+							if (urgency && urgency > 7) {
+								console.log('agent ', agent.getName(), ' raised hand with urgency ', urgency);
+								// kill the active agent, and make the new agent active
+								activeAgent.makeIdle();
+								agent.makeAgentActive();
+							}
+						}
+					} else {
+						console.log('current agent has not been active for long enough');
+					}
 				}
 			}
+		} catch (error) {
+			console.error('Error in main loop:', error);
 		}
 
 		// Wait a bit before next check to avoid tight loop
