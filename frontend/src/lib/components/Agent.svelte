@@ -46,7 +46,6 @@
 		agent.isSpeakingNow() ? 'border-orange-500' : ''
 	)}
 >
-	{agent.getState()} :: {agent.isSpeakingNow()}
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
