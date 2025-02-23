@@ -3,6 +3,8 @@ import { filesystem } from '$lib/stores/filesystem.svelte';
 import { normalizeAgentName } from '$lib/stores/chatlog.svelte';
 import { showNotification } from '$lib/stores/notifications';
 
+const DEBUG = false;
+
 // Helper function to format todo as markdown
 function formatTodoAsMarkdown(todo: {
 	id: string;
@@ -58,26 +60,27 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 	requestedBy: string;
 	completedAt?: Date;
 }> {
-	console.log('[TodoList] Parsing markdown content:', markdown.slice(0, 100) + '...');
+	if (DEBUG) console.log('[TodoList] Parsing markdown content:', markdown.slice(0, 100) + '...');
 	const todos = [];
 	const sections = markdown.split('---').filter((section) => section.trim());
-	console.log('[TodoList] Found sections:', sections.length);
+	if (DEBUG) console.log('[TodoList] Found sections:', sections.length);
 
 	for (const section of sections) {
-		console.log('[TodoList] Processing section:', section.slice(0, 100) + '...');
+		if (DEBUG) console.log('[TodoList] Processing section:', section.slice(0, 100) + '...');
 		const titleMatch = section.match(/## (.*?) \[(HIGH|MEDIUM|LOW)\] \[(PENDING|COMPLETED)\]/);
 		const idMatch = section.match(/\*\*ID:\*\* (.*)/);
 		const requestedByMatch = section.match(/\*\*Requested By:\*\* (.*)/);
 		const completedAtMatch = section.match(/\*\*Completed At:\*\* (.*)/);
 		const descriptionMatch = section.match(/### Description\n([\s\S]*?)(?=\n\*\*|$)/);
 
-		console.log('[TodoList] Matches:', {
-			hasTitle: !!titleMatch,
-			hasId: !!idMatch,
-			hasRequestedBy: !!requestedByMatch,
-			hasCompletedAt: !!completedAtMatch,
-			hasDescription: !!descriptionMatch
-		});
+		if (DEBUG)
+			console.log('[TodoList] Matches:', {
+				hasTitle: !!titleMatch,
+				hasId: !!idMatch,
+				hasRequestedBy: !!requestedByMatch,
+				hasCompletedAt: !!completedAtMatch,
+				hasDescription: !!descriptionMatch
+			});
 
 		if (titleMatch && idMatch && requestedByMatch) {
 			const [, title, priority, status] = titleMatch;
@@ -90,7 +93,7 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 					if (!isNaN(date.getTime())) {
 						completedAt = date;
 					} else {
-						console.warn('[TodoList] Invalid completedAt date:', completedAtMatch[1]);
+						if (DEBUG) console.warn('[TodoList] Invalid completedAt date:', completedAtMatch[1]);
 					}
 				} catch (error) {
 					console.error('[TodoList] Error parsing completedAt date:', error);
@@ -106,14 +109,14 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 				requestedBy: requestedByMatch[1].trim(),
 				completedAt
 			};
-			console.log('[TodoList] Created todo item:', todo);
+			if (DEBUG) console.log('[TodoList] Created todo item:', todo);
 			todos.push(todo);
 		} else {
-			console.warn('[TodoList] Skipping invalid section - missing required fields');
+			if (DEBUG) console.warn('[TodoList] Skipping invalid section - missing required fields');
 		}
 	}
 
-	console.log('[TodoList] Parsed total todos:', todos.length);
+	if (DEBUG) console.log('[TodoList] Parsed total todos:', todos.length);
 	return todos;
 }
 
@@ -164,11 +167,11 @@ export const todoListTool = new Tool(
 		}
 	},
 	(async (args: Record<string, unknown>, agent) => {
-		console.log('[TodoList] Tool called with args:', args);
-		console.log('[TodoList] Agent:', agent.getName());
+		if (DEBUG) console.log('[TodoList] Tool called with args:', args);
+		if (DEBUG) console.log('[TodoList] Agent:', agent.getName());
 
 		if (typeof args !== 'object' || args === null) {
-			console.error('[TodoList] Invalid arguments provided');
+			if (DEBUG) console.error('[TodoList] Invalid arguments provided');
 			return {
 				success: false,
 				message: 'Invalid arguments'
@@ -183,12 +186,12 @@ export const todoListTool = new Tool(
 		const requestedBy = args.requestedBy as string | undefined;
 
 		// Ensure /todos directory exists
-		console.log('[TodoList] Creating /todos directory if needed');
+		if (DEBUG) console.log('[TodoList] Creating /todos directory if needed');
 		await filesystem.mkdirp('/todos');
 
 		// Get agent's todo file path
 		const todoFilePath = `/todos/${normalizeAgentName(agent.getName())}.md`;
-		console.log('[TodoList] Using todo file path:', todoFilePath);
+		if (DEBUG) console.log('[TodoList] Using todo file path:', todoFilePath);
 
 		// Load existing todos
 		let todos: Array<{
@@ -202,29 +205,29 @@ export const todoListTool = new Tool(
 		}> = [];
 
 		try {
-			console.log('[TodoList] Checking if todo file exists');
+			if (DEBUG) console.log('[TodoList] Checking if todo file exists');
 			const exists = await filesystem.exists(todoFilePath);
-			console.log('[TodoList] File exists:', exists);
+			if (DEBUG) console.log('[TodoList] File exists:', exists);
 
 			if (exists) {
-				console.log('[TodoList] Reading todo file');
+				if (DEBUG) console.log('[TodoList] Reading todo file');
 				const content = await filesystem.readFile(todoFilePath);
-				console.log('[TodoList] File content length:', content.length);
+				if (DEBUG) console.log('[TodoList] File content length:', content.length);
 				todos = parseTodoFromMarkdown(content);
 			} else {
-				console.log('[TodoList] No existing todo file found');
+				if (DEBUG) console.log('[TodoList] No existing todo file found');
 			}
 		} catch (error) {
 			console.error('[TodoList] Error reading todos:', error);
 		}
 
-		console.log('[TodoList] Loaded todos:', todos.length);
+		if (DEBUG) console.log('[TodoList] Loaded todos:', todos.length);
 
 		switch (action) {
 			case 'add': {
-				console.log('[TodoList] Adding new todo');
+				if (DEBUG) console.log('[TodoList] Adding new todo');
 				if (!title || !description || !priority || !requestedBy) {
-					console.error('[TodoList] Missing required fields for add');
+					if (DEBUG) console.error('[TodoList] Missing required fields for add');
 					return {
 						success: false,
 						message: 'Title, description, priority, and requestedBy are required for adding a todo'
@@ -234,7 +237,7 @@ export const todoListTool = new Tool(
 				// Check for number of pending todos
 				const pendingTodos = todos.filter((todo) => todo.status === 'pending');
 				if (pendingTodos.length >= 5) {
-					console.error('[TodoList] Too many pending todos');
+					if (DEBUG) console.error('[TodoList] Too many pending todos');
 					throw new Error(
 						'Cannot add more todos. Please complete some existing todos first (maximum 5 pending todos allowed).'
 					);
@@ -248,15 +251,15 @@ export const todoListTool = new Tool(
 					status: 'pending' as const,
 					requestedBy
 				};
-				console.log('[TodoList] Created new todo:', newTodo);
+				if (DEBUG) console.log('[TodoList] Created new todo:', newTodo);
 
 				todos.push(newTodo);
 
 				// Save to file
-				console.log('[TodoList] Saving updated todos to file');
+				if (DEBUG) console.log('[TodoList] Saving updated todos to file');
 				const content = todos.map((todo) => formatTodoAsMarkdown(todo)).join('\n');
 				await filesystem.writeFile(todoFilePath, content);
-				console.log('[TodoList] File saved successfully');
+				if (DEBUG) console.log('[TodoList] File saved successfully');
 
 				// Show notification
 				const priorityText = { high: '[HIGH]', medium: '[MEDIUM]', low: '[LOW]' };

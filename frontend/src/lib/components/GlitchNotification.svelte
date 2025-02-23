@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { fade, fly } from 'svelte/transition';
+	import { onDestroy } from 'svelte';
 	import TextScramble from './TextScramble.svelte';
 	import {
 		initializeNotifications,
@@ -12,6 +13,7 @@
 		message: string;
 		type?: NotificationType;
 		duration?: number;
+		removeAfter?: number; // Timestamp when to remove the notification
 	};
 
 	type StandardNotificationData = BaseNotificationData & {
@@ -29,56 +31,48 @@
 	let notifications = $state<NotificationData[]>([]);
 	let notificationBuffer = $state<NotificationData[]>([]);
 	let isProcessingBuffer = $state(false);
-	let lastNotificationTime = $state(0);
 	const NOTIFICATION_SPACING = 150; // ms between notifications
 
-	async function processNotificationBuffer() {
-		if (isProcessingBuffer || notificationBuffer.length === 0) return;
+	// Process notifications in batches to prevent too many updates
+	async function processNotifications() {
+		if (isProcessingBuffer) return;
 		isProcessingBuffer = true;
 
 		try {
-			while (notificationBuffer.length > 0) {
+			// Process buffer
+			if (notificationBuffer.length > 0) {
 				const now = Date.now();
-				const timeSinceLastNotification = now - lastNotificationTime;
-
-				if (timeSinceLastNotification < NOTIFICATION_SPACING) {
-					await new Promise((resolve) =>
-						setTimeout(resolve, NOTIFICATION_SPACING - timeSinceLastNotification)
-					);
-				}
-
-				const notification = notificationBuffer.shift()!;
-				notifications = [...notifications, notification];
-				lastNotificationTime = Date.now();
-
-				// Remove the notification after its duration if it's not a progress notification
-				if (!('isProgress' in notification) || !notification.isProgress) {
-					setTimeout(() => {
-						notifications = notifications.filter((n) => n.id !== notification.id);
-					}, notification.duration);
-				}
+				notifications = [...notifications, ...notificationBuffer];
+				notificationBuffer = [];
 			}
+
+			// Clean up expired notifications in the same batch
+			notifications = notifications.filter((n) => !n.removeAfter || n.removeAfter > Date.now());
 		} finally {
 			isProcessingBuffer = false;
 		}
 	}
 
+	// Set up periodic cleanup with a reasonable interval
+	const processInterval = setInterval(processNotifications, 1000);
+	onDestroy(() => clearInterval(processInterval));
+
 	// Global function to show notifications
 	function showNotification(message: string, type: NotificationType = 'info', duration = 5000) {
 		const notification: StandardNotificationData = {
-			id: Math.random().toString(36).substring(2),
+			id: crypto.randomUUID(),
 			message,
 			type,
-			duration
+			duration,
+			removeAfter: Date.now() + duration
 		};
 
 		notificationBuffer = [...notificationBuffer, notification];
-		processNotificationBuffer();
 	}
 
 	// Function to create progress notifications
 	function createProgressNotification(message: string): ProgressNotification {
-		const id = Math.random().toString(36).substring(2);
+		const id = crypto.randomUUID();
 		const notification: ProgressNotificationData = {
 			id,
 			message,
@@ -88,46 +82,58 @@
 		};
 
 		notificationBuffer = [...notificationBuffer, notification];
-		processNotificationBuffer();
+
+		const updateState = (updater: (notifications: NotificationData[]) => NotificationData[]) => {
+			try {
+				const currentNotifications = notifications;
+				const updatedNotifications = updater(currentNotifications);
+				if (JSON.stringify(currentNotifications) !== JSON.stringify(updatedNotifications)) {
+					notifications = updatedNotifications;
+				}
+			} catch (error) {
+				console.error('[Notification] Error updating state:', error);
+				notifications = notifications.filter((n) => n.id !== id);
+			}
+		};
 
 		return {
 			id,
 			message,
 			progress: 0,
 			updateProgress: (progress: number) => {
-				notifications = notifications.map((n) => {
-					if (n.id === id && 'isProgress' in n && n.isProgress) {
-						return { ...n, progress: Math.min(100, Math.max(0, progress)) };
-					}
-					return n;
-				});
+				updateState((notifications) =>
+					notifications.map((n) => {
+						if (n.id === id && 'isProgress' in n && n.isProgress) {
+							return { ...n, progress: Math.min(100, Math.max(0, progress)) };
+						}
+						return n;
+					})
+				);
 			},
 			finish: (type?: 'success' | 'error') => {
 				if (!type) {
-					notifications = notifications.filter((n) => n.id !== id);
+					updateState((notifications) => notifications.filter((n) => n.id !== id));
 					return;
 				}
 
-				notifications = notifications.map((n) => {
-					if (n.id === id && 'isProgress' in n && n.isProgress) {
-						return {
-							...n,
-							state: type,
-							progress: 100
-						};
-					}
-					return n;
-				});
-
-				// Remove after a short delay to show the success/error state
-				setTimeout(() => {
-					notifications = notifications.filter((n) => n.id !== id);
-				}, 1000);
+				updateState((notifications) =>
+					notifications.map((n) => {
+						if (n.id === id && 'isProgress' in n && n.isProgress) {
+							return {
+								...n,
+								state: type,
+								progress: 100,
+								removeAfter: Date.now() + 1000
+							};
+						}
+						return n;
+					})
+				);
 			}
 		};
 	}
 
-	// Initialize the notification system
+	// Initialize the notification system once
 	$effect(() => {
 		initializeNotifications(showNotification, createProgressNotification);
 	});
