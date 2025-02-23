@@ -114,12 +114,7 @@ export class Agent {
 	private pendingHandRaisingAudioBuffer = $state<AudioBuffer | null>(null);
 	private pendingHandRaisingText = $state<string | null>(null);
 
-	constructor(
-		name: string,
-		personality: string,
-		tools: Tool[],
-		options?: { id?: string; initialState?: AgentState }
-	) {
+	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
 		this.id = options?.id ?? uid();
 		this.name = name;
 		this.personality = personality;
@@ -150,7 +145,7 @@ export class Agent {
 			},
 			...this.messageLog
 		];
-		this.state = options?.initialState || 'IDLE';
+		this.state = 'IDLE';
 
 		// Initialize profile picture and voice
 		this.initProfilePicture();
@@ -257,7 +252,13 @@ export class Agent {
 			clientTools: {
 				get_persona: async () => {
 					console.log(`[${this.name}] Getting system prompt for elevenlabs`);
-					return this.getSystemPrompt();
+					return `You are ${this.name} and your personality is: ${this.getPersonality()}
+					
+					<conversation_log>
+						Here is the conversation so far that you've been a part of:
+						${JSON.stringify(this.messageLog)}
+					</conversation_log>
+					`;
 				},
 				...clientTools
 			}
@@ -715,8 +716,7 @@ export class Agent {
 			});
 
 			const agent = new Agent(json.name, json.personality, [], {
-				id: json.id,
-				initialState: json.state
+				id: json.id
 			});
 			agent.toolIds = validToolIds;
 			agent.messageLog = json.messageLog;
@@ -797,7 +797,6 @@ export class Agent {
 	 When idle, an expert that is part of the call might decide to raise their hand to mention something.
 	*/
 	public async considerRaisingHand(): Promise<null | number> {
-		console.log('considering raising hand for ', this.name);
 		const MIN_WAIT_TIME_BETWEEN_CONVERSATIONS = 20000;
 		if (
 			!this.lastConsiderRaisingHandTimestamp ||
@@ -887,9 +886,9 @@ export class Agent {
 					console.log('agent ', this.name, ' decided to stay quiet');
 				}
 			} else {
-				console.log('agent ', this.name, ' decided to stay quiet');
+				//console.log('agent ', this.name, ' decided to stay quiet');
 			}
-			console.log('response hand raising', response);
+			//console.log('response hand raising', response);
 		}
 		return null;
 	}
