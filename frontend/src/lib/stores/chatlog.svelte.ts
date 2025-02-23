@@ -30,7 +30,7 @@ export function addAiJoinEvent(agent: { name: string; model?: string; personalit
 	const backstory = agent.personality ? `\nBackstory: ${agent.personality}` : '';
 	const message = `${normalizedName}${modelInfo} joined the conversation${backstory}`;
 	addDeveloperEvent(message);
-	showNotification(message, 'info');
+	showNotification(`${normalizedName} joined the conversation`, 'info');
 }
 
 export function addAiLeaveEvent(agent: { name: string; model?: string }) {
