@@ -78,7 +78,7 @@
 	onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 	role="button"
 	tabindex="0"
-	class="h-full w-full relative bg-gray-900 overflow-hidden"
+	class="h-full w-full relative bg-gray-900 overflow-hidden max-h-[900px]"
 >
 	<div class="absolute inset-0 flex flex-col">
 		<!-- State indicator -->
@@ -110,7 +110,7 @@
 				<h3 class="text-lg font-semibold text-white truncate">
 					{agent.getName().replaceAll('_', ' ')}
 				</h3>
-				<span class="text-sm text-white">({agent.getTodos().length})</span>
+				<span class="text-sm text-white">({agent.getTodos.length})</span>
 			</div>
 		</div>
 	</div>

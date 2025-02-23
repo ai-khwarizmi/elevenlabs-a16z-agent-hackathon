@@ -184,7 +184,7 @@
 						return 0;
 					}) as agent}
 						<div
-							class={`relative h-full ${currentAgents.length === 1 ? 'aspect-video w-full max-w-4xl' : ''}`}
+							class={`relative h-full max-h-[900px] ${currentAgents.length === 1 ? 'aspect-video w-full max-w-4xl' : ''}`}
 						>
 							<div
 								class="absolute inset-0 border-3 transition-colors duration-300"
