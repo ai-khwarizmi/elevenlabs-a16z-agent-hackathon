@@ -14,9 +14,14 @@
 	let activeTodos = $derived(todos.filter((todo) => todo.status !== 'completed'));
 
 	$effect(() => {
-		agent.getTodos().then((newTodos) => {
-			todos = newTodos;
-		});
+		const hasTodoTool = agent
+			.getTools()
+			.some((tool) => tool.getDefinition().function.name === 'manage_todos');
+		if (hasTodoTool) {
+			agent.getTodos().then((newTodos) => {
+				todos = newTodos;
+			});
+		}
 	});
 
 	function togglePopup() {
@@ -275,10 +280,7 @@
 											Requested by: {todo.requestedBy}
 										</div>
 									{/if}
-									<div class="flex justify-between text-xs text-white/60">
-										<span>
-											Created: {new Date(todo.createdAt).toLocaleDateString()}
-										</span>
+									<div class="flex justify-end text-xs text-white/60">
 										{#if todo.completedAt}
 											<span>
 												Completed: {new Date(todo.completedAt).toLocaleDateString()}
