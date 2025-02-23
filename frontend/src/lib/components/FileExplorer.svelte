@@ -140,6 +140,38 @@
 							font-family: system-ui, -apple-system, sans-serif;
 							margin: 1rem;
 						}
+
+						/* Scrollbar Styling */
+						::-webkit-scrollbar {
+							width: 8px;
+							height: 8px;
+						}
+
+						::-webkit-scrollbar-track {
+							background: #1a1a1a;
+							border-radius: 4px;
+						}
+
+						::-webkit-scrollbar-thumb {
+							background: #333333;
+							border-radius: 4px;
+							border: 2px solid #1a1a1a;
+						}
+
+						::-webkit-scrollbar-thumb:hover {
+							background: #444444;
+						}
+
+						::-webkit-scrollbar-corner {
+							background: #1a1a1a;
+						}
+
+						/* Firefox scrollbar styling */
+						* {
+							scrollbar-width: thin;
+							scrollbar-color: #333333 #1a1a1a;
+						}
+
 						${
 							isMarkdown
 								? `
