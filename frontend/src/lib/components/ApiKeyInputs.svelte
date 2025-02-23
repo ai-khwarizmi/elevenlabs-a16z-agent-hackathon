@@ -6,6 +6,10 @@
 		storeElevenLabsKey,
 		storeFalKey
 	} from '$lib/storage/keys';
+	import { isApiKeysPopupVisible, hideApiKeysPopup } from '$lib/stores/apiKeys';
+	import { createEventDispatcher } from 'svelte';
+
+	const dispatch = createEventDispatcher();
 
 	let openaiKey = $state('');
 	let elevenLabsKey = $state('');
@@ -16,7 +20,6 @@
 	let openAIError = $state('');
 	let elevenLabsError = $state('');
 	let falError = $state('');
-	let isCompact = $state(false);
 	let isOpenAIValid = $state(false);
 	let isElevenLabsValid = $state(false);
 	let isFalValid = $state(false);
@@ -40,9 +43,6 @@
 			falKey = storedFalKey;
 			isFalValid = true;
 		}
-		if (storedOpenAIKey && storedElevenLabsKey && storedFalKey) {
-			isCompact = true;
-		}
 	});
 
 	async function handleOpenAIKeyValidation() {
@@ -58,7 +58,7 @@
 			isOpenAIValid = true;
 			if (isElevenLabsValid && isFalValid) {
 				setTimeout(() => {
-					isCompact = true;
+					isOpenAIValid = true;
 				}, 500); // Wait for success animation
 			}
 		} else {
@@ -82,7 +82,7 @@
 			isElevenLabsValid = true;
 			if (isOpenAIValid && isFalValid) {
 				setTimeout(() => {
-					isCompact = true;
+					isElevenLabsValid = true;
 				}, 500); // Wait for success animation
 			}
 		} else {
@@ -107,7 +107,7 @@
 				isFalValid = true;
 				if (isOpenAIValid && isElevenLabsValid) {
 					setTimeout(() => {
-						isCompact = true;
+						isFalValid = true;
 					}, 500);
 				}
 			} else {
@@ -122,52 +122,43 @@
 		isValidatingFal = false;
 	}
 
-	// Validate keys when they change
-	$effect(() => {
-		if (openaiKey) handleOpenAIKeyValidation();
-	});
+	async function handleSave() {
+		// Reset validation states
+		openAIError = '';
+		elevenLabsError = '';
+		falError = '';
+		isOpenAIValid = false;
+		isElevenLabsValid = false;
+		isFalValid = false;
 
-	$effect(() => {
-		if (elevenLabsKey) handleElevenLabsKeyValidation();
-	});
+		// Validate all keys
+		if (openaiKey) await handleOpenAIKeyValidation();
+		if (elevenLabsKey) await handleElevenLabsKeyValidation();
+		if (falKey) await handleFalKeyValidation();
 
-	$effect(() => {
-		if (falKey) handleFalKeyValidation();
-	});
-
-	function expandInputs() {
-		isCompact = false;
-	}
-
-	function closeInputs() {
-		isCompact = true;
+		// If all keys are valid, close popup and notify parent
+		if (isOpenAIValid && isElevenLabsValid && isFalValid) {
+			setTimeout(() => {
+				hideApiKeysPopup();
+				dispatch('keysUpdated', { keysSet: true });
+			}, 500);
+		}
 	}
 </script>
 
-{#if isCompact}
-	<button
-		onclick={expandInputs}
-		class="left-4 top-4 flex items-center space-x-2 bg-green-50 px-3 py-2 text-sm font-medium text-green-700 border border-green-700/20 transition-all duration-200 hover:bg-green-100"
+{#if $isApiKeysPopupVisible}
+	<div
+		class="max-w-1/4 fixed left-4 top-20 z-50 flex w-full flex-col gap-2 space-y-4 border bg-black p-4 text-white"
 	>
-		<svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-			<path
-				fill-rule="evenodd"
-				d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z"
-				clip-rule="evenodd"
-			/>
-		</svg>
-		<span>API Keys Ready</span>
-	</button>
-{:else}
-	<div class="fixed bg-black border border-white text-white p-8 left-4 top-4 w-64 space-y-4">
 		<div class="flex justify-end">
 			<button
-			onclick={closeInputs}
-			class="left-4 top-4 flex items-center space-x-2 bg-black px-3 py-2 text-sm font-medium text-white border border-white/20 transition-all duration-200 hover:bg-white/10"
-		>
-			Close
-		</button>
+				onclick={() => hideApiKeysPopup()}
+				class="left-4 top-4 flex items-center space-x-2 border bg-black px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-white/10"
+			>
+				Close
+			</button>
 		</div>
+		<div class="font-medium text-white">Please enter your API keys:</div>
 		<div class="space-y-2">
 			<label for="openai-key" class="block text-sm font-medium text-white">OpenAI API Key</label>
 			<div class="relative">
@@ -175,7 +166,7 @@
 					id="openai-key"
 					type="password"
 					bind:value={openaiKey}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {openAIError
+					class="w-full border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white {openAIError
 						? 'border-red-500'
 						: ''} {isOpenAIValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter OpenAI API Key"
@@ -218,7 +209,7 @@
 					id="elevenlabs-key"
 					type="password"
 					bind:value={elevenLabsKey}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {elevenLabsError
+					class="w-full border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white {elevenLabsError
 						? 'border-red-500'
 						: ''} {isElevenLabsValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter ElevenLabs API Key"
@@ -259,7 +250,7 @@
 					id="fal-key"
 					type="password"
 					bind:value={falKey}
-					class="w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500 {falError
+					class="w-full border border-gray-300 px-3 py-2 shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white {falError
 						? 'border-red-500'
 						: ''} {isFalValid ? 'border-green-500 bg-green-900' : ''}"
 					placeholder="Enter FAL API Key"
@@ -292,6 +283,20 @@
 					<p class="text-sm text-red-500 transition-all duration-200">{falError}</p>
 				{/if}
 			</div>
+		</div>
+		<div class="flex justify-end space-x-2 mt-4">
+			<button
+				onclick={() => hideApiKeysPopup()}
+				class="border bg-black px-3 py-2 text-sm font-medium text-white transition-all duration-200 hover:bg-white/10"
+			>
+				Cancel
+			</button>
+			<button
+				onclick={handleSave}
+				class="border bg-white px-3 py-2 text-sm font-medium text-black transition-all duration-200 hover:bg-white/80"
+			>
+				Save Keys
+			</button>
 		</div>
 	</div>
 {/if}

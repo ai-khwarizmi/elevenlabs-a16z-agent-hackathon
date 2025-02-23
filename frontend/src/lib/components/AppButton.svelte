@@ -6,13 +6,13 @@
     export let type: 'button' | 'submit' | 'reset' = 'button';
     export let disabled: boolean = false;
   
-    const baseClasses = "inline-flex items-center justify-center font-semibold transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
+    const baseClasses = "inline-flex items-center justify-center font-medium transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
     
     const variantClasses = {
       primary: "bg-[#FF6222] hover:bg-[#e55820] text-white",
       secondary: "bg-black hover:bg-neutral-900 text-white border border-white",
       destructive: "bg-[#FF2222] hover:bg-red-600 text-white h-[58px]",
-      success: "bg-green-500 hover:bg-green-600 text-white h-[58px]"
+      success: "bg-green-600 hover:bg-green-600 text-white h-[58px]"
     };
   
     $: classes = `${baseClasses} ${variantClasses[variant]} ${!text && icon ? 'p-4' : 'px-6 py-3'} whitespace-nowrap ${$$props.class || ''}`;

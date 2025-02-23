@@ -69,36 +69,26 @@ if (typeof window !== 'undefined') {
 	}
 
 	// Ensure there's always at least one session
-	if (sessionList.length === 0) {
-		const defaultSession: Session = {
-			id: uid(),
-			name: 'Default Session',
-			createdAt: new Date().toISOString(),
-			lastModified: new Date().toISOString(),
-			agents: []
-		};
+	// if (sessionList.length === 0) {
+	// 	const defaultSession: Session = {
+	// 		id: uid(),
+	// 		name: 'Default Session',
+	// 		createdAt: new Date().toISOString(),
+	// 		lastModified: new Date().toISOString(),
+	// 		agents: []
+	// 	}
 
-		try {
-			// Add helper agent to the default session
-			defaultSession.agents.push(createChiefOfStaffAgent());
-		} catch (error) {
-			console.warn('Failed to create Chief of Staff agent:', error);
-		}
-
-		sessionList = [defaultSession];
-		// Save the new session
-		localStorage.setItem(SESSION_LIST_KEY, JSON.stringify([defaultSession.id]));
-		saveSession(defaultSession);
-	}
+	// 	sessionList = [defaultSession];
+	// 	// Save the new session
+	// 	localStorage.setItem(SESSION_LIST_KEY, JSON.stringify([defaultSession.id]));
+	// 	saveSession(defaultSession);
+	// }
 
 	// Try to load the last used session, fallback to first session if not found
 	const lastSessionId = localStorage.getItem(LAST_SESSION_KEY);
 	if (lastSessionId && sessionList.find((s) => s.id === lastSessionId)) {
 		loadSessionAgents(lastSessionId);
 		currentSessionId = lastSessionId;
-	} else {
-		loadSessionAgents(sessionList[0].id);
-		currentSessionId = sessionList[0].id;
 	}
 }
 
@@ -139,6 +129,37 @@ export const sessions = {
 	},
 	get current(): Session | undefined {
 		return sessionList.find((s) => s.id === currentSessionId);
+	},
+	createDefaultSession(): Session {
+		// Clear developer events when creating a new session
+		clearDeveloperEvents();
+
+		const defaultSession: Session = {
+			id: uid(),
+			name: 'Default Session',
+			createdAt: new Date().toISOString(),
+			lastModified: new Date().toISOString(),
+			agents: []
+		}
+
+		try {
+			// Add Chief of Staff agent to new sessions by default
+			defaultSession.agents.push(createChiefOfStaffAgent());
+		} catch (error) {
+			console.warn('Failed to create Chief of Staff agent:', error);
+		}
+
+		sessionList.push(defaultSession);
+		currentSessionId = defaultSession.id;
+
+		// Save session list and new session
+		const sessionIds = sessionList.map((s) => s.id);
+		localStorage.setItem(SESSION_LIST_KEY, JSON.stringify(sessionIds));
+		localStorage.setItem(LAST_SESSION_KEY, defaultSession.id);
+		saveSession(defaultSession);
+
+		return defaultSession;
+
 	},
 	createSession(name: string): Session {
 		// Clear developer events when creating a new session

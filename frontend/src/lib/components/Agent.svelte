@@ -77,7 +77,7 @@
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
-			<h2 class="flex items-center justify-center gap-2 text-xl font-bold text-white">
+			<h2 class="text-xl font-bold text-white line-clamp-1">
 				{agent.getName()}
 				{#if activeTodos.length > 0}
 					<span
@@ -89,9 +89,7 @@
 			</h2>
 		</div>
 		<!-- Image container -->
-		<div
-			class="relative aspect-square w-full max-w-[179px] transition-transform duration-200 group-hover:scale-105"
-		>
+		<div class="relative aspect-square w-full">
 			{#if agent.getProfilePicture()}
 				<img
 					src={agent.getProfilePicture()}
