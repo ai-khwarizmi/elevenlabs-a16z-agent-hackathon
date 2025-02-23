@@ -9,7 +9,7 @@
 	import ChatTranscript from '$lib/components/ChatTranscript.svelte';
 	import Timer from '$lib/components/Timer.svelte';
 	import SearchBar from '$lib/components/SearchBar.svelte';
-	
+
 	let message = $state('');
 	let isProcessing = $state(false);
 	let response = $state('');
@@ -19,11 +19,7 @@
 
 	let currentAgents = $derived(agents.list);
 
-	let activeAgent = $derived(
-		currentAgents.find(
-			(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-		)
-	);
+	let activeAgent = $derived(currentAgents.find((agent) => agent.getState() === 'ACTIVE'));
 
 	async function handleMessage() {
 		if (!message.trim()) return;
@@ -34,9 +30,7 @@
 		const messageCopy = message.trim();
 		message = '';
 		//get agent
-		const agent = currentAgents.find(
-			(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-		);
+		const agent = currentAgents.find((agent) => agent.getState() === 'ACTIVE');
 
 		if (!agent) {
 			error = 'No active agent found';
@@ -110,10 +104,10 @@
 				class:-left-96={isTranscriptExpanded}
 				class:left-0={!isTranscriptExpanded}
 			>
-				<div class="mx-auto w-full max-w-2xl items-end space-y-4">
+				<div class="mx-auto w-full max-w-2xl items-end justify-center space-y-4">
 					{#if response}
-						<div class="bg-black border border-white p-4 text-white">
-							<h3 class="text-sm text-[#FF6222] mb-1">{responseAgentName}:</h3>
+						<div class="border border-white bg-black p-4 text-white">
+							<h3 class="mb-1 text-sm text-[#FF6222]">{responseAgentName}:</h3>
 							{response}
 						</div>
 					{/if}
@@ -123,26 +117,23 @@
 							{error}
 						</div>
 					{/if}
-					<div class="flex items-end gap-4">
-						<div class="flex-1">
-							<SearchBar
-								bind:value={message}
-								onSearch={handleMessage}
-								placeholder="What can we help you with?"
-							/>
-						</div>
+					<div class="relative flex items-center justify-center gap-4">
 						{#if agents.mode === 'VOICE'}
 							{#if activeAgent?.getCallStartTime()}
-								<div class="absolute bottom-20 right-1/4 -translate-x-1/2">
+								<div class="absolute bottom-full">
 									<Timer startTime={activeAgent.getCallStartTime()} />
 								</div>
 							{/if}
-							<AppButton
-								text="Hang Up"
-								variant="destructive"
-								icon={HangUpIcon}
-								onClick={() => (agents.mode = 'TEXT')}
-							/>
+							{#if activeAgent?.getIsConnectedToConversation()}
+								<AppButton
+									text="Hang Up"
+									variant="destructive"
+									icon={HangUpIcon}
+									onClick={() => (agents.mode = 'TEXT')}
+								/>
+							{:else}
+								<AppButton text="Connecting..." variant="primary" icon={MicIcon} disabled={true} />
+							{/if}
 						{:else}
 							<AppButton
 								text="Live Chat"
@@ -151,8 +142,7 @@
 								onClick={() => (agents.mode = 'VOICE')}
 							/>
 						{/if}
-							</div>
-					
+					</div>
 				</div>
 			</div>
 		{/if}

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { agents } from '$lib/stores/agents.svelte';
 	import type { Agent } from '$lib/utils/agent.svelte';
 	import { cn } from '$lib/utils/tw';
 	import TextScramble from './TextScramble.svelte';
@@ -17,7 +18,7 @@
 		switch (agent.getState()) {
 			case 'IDLE':
 				return 'bg-gray-100 text-gray-800';
-			case 'VOICE_ACTIVE':
+			case 'ACTIVE':
 				return 'bg-blue-100 text-blue-800';
 			case 'LEFT_CALL':
 				return 'bg-red-100 text-red-800';
@@ -38,9 +39,7 @@
 	tabindex="0"
 	class={cn(
 		'flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3',
-		agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-			? 'border-[#FF6222]'
-			: '',
+		agent.getState() === 'ACTIVE' ? 'border-[#FF6222]' : '',
 		agent.getState() === 'IDLE' ? 'border-gray-500' : '',
 		agent.getState() === 'WORKING' ? 'border-white' : 'border-gray-500',
 		agent.isSpeakingNow() ? 'border-orange-500' : ''
@@ -66,11 +65,11 @@
 					<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
 				</div>
 			{/if}
-			{#if agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'}
+			{#if agent.getState() === 'ACTIVE'}
 				<div
 					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border border-[#FF6222] bg-white"
 				>
-					{#if agent.getState() === 'VOICE_ACTIVE'}
+					{#if agent.getState() === 'ACTIVE'}
 						<div class="audio-wave">
 							<div class="bar"></div>
 							<div class="bar"></div>
@@ -87,7 +86,7 @@
 			{/if}
 		</div>
 		<!-- State text -->
-		{#if agent.getState() === 'VOICE_ACTIVE'}
+		{#if agent.getState() === 'ACTIVE' && agents.mode === 'VOICE'}
 			{#if agent.getIsConnectedToConversation()}
 				<span class="text-center font-['Anonymous_Pro'] text-lg font-bold text-green-500">
 					Connected
@@ -99,8 +98,7 @@
 			{/if}
 		{:else}
 			<span
-				class="text-center font-['Anonymous_Pro'] text-lg font-bold {agent.getState() ===
-					'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+				class="text-center font-['Anonymous_Pro'] text-lg font-bold {agent.getState() === 'ACTIVE'
 					? 'text-[#FF6222]'
 					: 'text-white'}"
 			>

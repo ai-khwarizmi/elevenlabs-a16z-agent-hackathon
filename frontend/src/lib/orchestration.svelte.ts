@@ -66,7 +66,7 @@ async function determineAndActivateNextAgent(
 			const selectedAgent = agentList.find((agent) => agent.id === agent_id);
 			if (selectedAgent) {
 				console.log(`Activating agent: ${selectedAgent.getName()} (${agent_id})`);
-				selectedAgent.makeAgentActive();
+				selectedAgent.makeActive();
 			} else {
 				console.warn(`Agent with ID ${agent_id} not found`);
 			}
@@ -98,10 +98,7 @@ async function mainLoop() {
 				//wait 10 seconds before checking again
 				await new Promise((resolve) => setTimeout(resolve, 10000));
 			} else {
-				const activeAgent = agentList.find(
-					(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-				);
-
+				const activeAgent = agentList.find((agent) => agent.getState() === 'ACTIVE');
 				if (!activeAgent) {
 					console.log('No active agent found');
 				} else {
@@ -122,7 +119,7 @@ async function mainLoop() {
 								// wait 4 seconds, then make them active
 								await new Promise((resolve) => setTimeout(resolve, 4000));
 								activeAgent.makeIdle();
-								agent.makeAgentActive();
+								agent.makeActive();
 							} else if (urgency === null) {
 								//agent doesnt want to raise their hand, lets see if they want to do work
 								await agentDoWork(agent);

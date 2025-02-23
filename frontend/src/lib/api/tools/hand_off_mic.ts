@@ -39,7 +39,7 @@ export const handOffMicTool = new Tool(
 			if (targetAgentId) {
 				const targetAgent = agents.getAgentById(targetAgentId);
 				if (targetAgent) {
-					targetAgent.makeAgentActive();
+					targetAgent.makeActive();
 				} else {
 					return {
 						success: false,
