@@ -99,6 +99,11 @@ Some examples:
 
 `;
 
+interface OpenAIError {
+	message?: string;
+	[key: string]: unknown;
+}
+
 /**
  * Class representing an AI agent with a name, personality, and set of tools
  */
@@ -591,6 +596,40 @@ ${JSON.stringify(this.messageLog)}
 	}
 
 	/**
+	 * Prunes the message log to reduce token count while preserving system prompt and recent messages
+	 * @param keepPercentage The percentage of messages to keep (0-1)
+	 * @returns Pruned message array
+	 */
+	private pruneMessages(keepPercentage: number = 0.3): TimestampedMessage[] {
+		// Always keep the system prompt (first message)
+		const systemPrompt = this.messageLog[0];
+
+		// Get all non-system messages
+		const nonSystemMessages = this.messageLog.slice(1);
+
+		// Calculate how many messages to keep
+		const messagesToKeep = Math.max(Math.floor(nonSystemMessages.length * keepPercentage), 1);
+
+		// Keep the most recent messages
+		const recentMessages = nonSystemMessages.slice(-messagesToKeep);
+
+		// Create the pruned message array with proper typing
+		const prunedMessages: TimestampedMessage[] = [
+			systemPrompt,
+			{
+				id: generateUniqueId(),
+				role: 'system' as const,
+				content: `[PRUNED] ${nonSystemMessages.length - messagesToKeep} older messages were removed to stay within token limits.`,
+				name: 'system',
+				timestamp: Date.now()
+			} as TimestampedMessage,
+			...recentMessages
+		];
+
+		return prunedMessages;
+	}
+
+	/**
 	 * Send a message to the agent and get its response
 	 * This function handles the entire conversation flow including tool execution
 	 */
@@ -609,77 +648,91 @@ ${JSON.stringify(this.messageLog)}
 			];
 		}
 
+		let retryWithPruning = false;
+
 		while (true) {
-			// Strip timestamp from messages before sending to OpenAI
-			const messagesForApi = this.messageLog.map((msg) => {
-				return {
-					...msg,
-					timestamp: undefined,
-					id: undefined,
-					name: normalizeAgentName(msg.name)
-				};
-			});
+			try {
+				// Strip timestamp from messages before sending to OpenAI
+				const messagesForApi = this.messageLog.map((msg) => {
+					return {
+						...msg,
+						timestamp: undefined,
+						id: undefined,
+						name: normalizeAgentName(msg.name)
+					};
+				});
 
-			// Get AI response
-			const completion = await this.getOpenAI().chat.completions.create({
-				model: 'gpt-4o',
-				messages: messagesForApi,
-				tools: this.getToolDefinitions(),
-				tool_choice: 'auto'
-			});
+				// Get AI response
+				const completion = await this.getOpenAI().chat.completions.create({
+					model: 'gpt-4o',
+					messages: messagesForApi,
+					tools: this.getToolDefinitions(),
+					tool_choice: 'auto'
+				});
 
-			const response = completion.choices[0].message;
+				const response = completion.choices[0].message;
 
-			// Add AI response to log with timestamp and name
-			this.messageLog = [
-				...this.messageLog,
-				{
-					id: generateUniqueId(),
-					...response,
-					timestamp: Date.now(),
-					name: normalizeAgentName(this.getName())
+				// Add AI response to log with timestamp and name
+				this.messageLog = [
+					...this.messageLog,
+					{
+						id: generateUniqueId(),
+						...response,
+						timestamp: Date.now(),
+						name: normalizeAgentName(this.getName())
+					}
+				];
+
+				// If there's a function call, execute it and add results before continuing
+				if (response.tool_calls && response.tool_calls.length > 0) {
+					// Execute all tool calls in parallel and collect their results
+					const toolResults = await Promise.all(
+						response.tool_calls.map(async (toolCall) => {
+							const result = await this.executeTool(
+								toolCall.function.name,
+								JSON.parse(toolCall.function.arguments)
+							);
+
+							// Return both the tool call ID and the result
+							return {
+								tool_call_id: toolCall.id,
+								result
+							};
+						})
+					);
+
+					// Add each tool result to the message log
+					for (const { tool_call_id, result } of toolResults) {
+						this.messageLog = [
+							...this.messageLog,
+							{
+								id: generateUniqueId(),
+								role: 'tool',
+								name: normalizeAgentName(this.getName()),
+								tool_call_id,
+								content: JSON.stringify(result),
+								timestamp: Date.now()
+							}
+						];
+					}
+
+					// Continue the conversation to get AI's response to the tool results
+					continue;
 				}
-			];
 
-			// If there's a function call, execute it and add results before continuing
-			if (response.tool_calls && response.tool_calls.length > 0) {
-				// Execute all tool calls in parallel and collect their results
-				const toolResults = await Promise.all(
-					response.tool_calls.map(async (toolCall) => {
-						const result = await this.executeTool(
-							toolCall.function.name,
-							JSON.parse(toolCall.function.arguments)
-						);
-
-						// Return both the tool call ID and the result
-						return {
-							tool_call_id: toolCall.id,
-							result
-						};
-					})
-				);
-
-				// Add each tool result to the message log
-				for (const { tool_call_id, result } of toolResults) {
-					this.messageLog = [
-						...this.messageLog,
-						{
-							id: generateUniqueId(),
-							role: 'tool',
-							name: normalizeAgentName(this.getName()),
-							tool_call_id,
-							content: JSON.stringify(result),
-							timestamp: Date.now()
-						}
-					];
+				// If no tool calls, return the response content
+				return response.content || '';
+			} catch (error: unknown) {
+				// Check if it's a token limit error
+				const openAIError = error as OpenAIError;
+				if (openAIError?.message?.includes('maximum context length') && !retryWithPruning) {
+					console.log('Token limit exceeded, pruning messages...');
+					this.messageLog = this.pruneMessages(0.3);
+					retryWithPruning = true;
+					continue;
 				}
-
-				// Continue the conversation to get AI's response to the tool results
-				continue;
+				throw error;
 			}
-
-			// If no tool calls, return the response content
-			return response.content || '';
 		}
 	}
 

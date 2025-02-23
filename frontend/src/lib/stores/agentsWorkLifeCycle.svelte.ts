@@ -1,7 +1,12 @@
 import type { Agent } from '$lib/utils/agent.svelte';
-import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import type {
+	ChatCompletionMessageParam,
+	ChatCompletionSystemMessageParam,
+	ChatCompletionUserMessageParam
+} from 'openai/resources/chat/completions';
 import { addDeveloperEvent } from './chatlog.svelte';
 import { showNotification, createProgressNotification } from './notifications.svelte';
+import type { OpenAIError } from 'openai';
 
 type AgentWorkPhase = 'PLANNING' | 'DOING';
 
@@ -163,72 +168,107 @@ async function agentDoDoing(agent: Agent) {
 			{
 				role: 'system',
 				content: workPrompt
-			},
+			} as ChatCompletionSystemMessageParam,
 			{
 				role: 'user',
 				content: `The current conversation: <conversation>${JSON.stringify(
 					agent.getMessageLog()
 				)}</conversation>`
-			}
+			} as ChatCompletionUserMessageParam
 		];
 
 		let todoCompleted = false;
 		const maxIterations = 10;
 		let iterations = 0;
+		let retryWithPruning = false;
 
 		while (!todoCompleted && iterations < maxIterations) {
 			iterations++;
 			notification.updateProgress((iterations / maxIterations) * 100);
 
-			const toolDefinitions = agent.getToolDefinitions();
-			console.log(`[DOING-PHASE][Iteration ${iterations}] Tool definitions:`, toolDefinitions);
+			try {
+				const toolDefinitions = agent.getToolDefinitions();
+				console.log(`[DOING-PHASE][Iteration ${iterations}] Tool definitions:`, toolDefinitions);
 
-			const aiResponse = await agent.getOpenAI().chat.completions.create({
-				model: 'gpt-4o',
-				messages: currentMessages,
-				tools: agent
-					.getToolDefinitions()
-					.filter((tool) => !['invite_agent', 'show_dialog'].includes(tool.function.name)),
-				tool_choice: 'auto',
-				parallel_tool_calls: true
-			});
+				const aiResponse = await agent.getOpenAI().chat.completions.create({
+					model: 'gpt-4o',
+					messages: currentMessages,
+					tools: agent
+						.getToolDefinitions()
+						.filter((tool) => !['invite_agent', 'show_dialog'].includes(tool.function.name)),
+					tool_choice: 'auto',
+					parallel_tool_calls: true
+				});
 
-			const assistantMessage = aiResponse.choices[0].message;
-			console.log(`[DOING-PHASE][Iteration ${iterations}] Assistant message:`, assistantMessage);
+				const assistantMessage = aiResponse.choices[0].message;
+				console.log(`[DOING-PHASE][Iteration ${iterations}] Assistant message:`, assistantMessage);
 
-			currentMessages.push(assistantMessage);
-			const toolCalls = assistantMessage.tool_calls;
+				currentMessages.push(assistantMessage as ChatCompletionMessageParam);
+				const toolCalls = assistantMessage.tool_calls;
 
-			// Process each tool call
-			console.log(`[DOING-PHASE][Iteration ${iterations}] Tool calls:`, toolCalls?.length);
-			for (const toolCall of toolCalls ?? []) {
-				console.log(`[DOING-PHASE][Iteration ${iterations}] Executing tool call:`, toolCall);
-				const result = await agent.executeTool(
-					toolCall.function.name,
-					JSON.parse(toolCall.function.arguments)
-				);
-				console.log(`[DOING-PHASE][Iteration ${iterations}] Tool call result:`, result);
+				// Process each tool call
+				console.log(`[DOING-PHASE][Iteration ${iterations}] Tool calls:`, toolCalls?.length);
+				for (const toolCall of toolCalls ?? []) {
+					console.log(`[DOING-PHASE][Iteration ${iterations}] Executing tool call:`, toolCall);
+					const result = await agent.executeTool(
+						toolCall.function.name,
+						JSON.parse(toolCall.function.arguments)
+					);
+					console.log(`[DOING-PHASE][Iteration ${iterations}] Tool call result:`, result);
 
-				// Check if this was a todo update that marked our current todo as complete
-				if (toolCall.function.name === 'manage_todos') {
-					const args = JSON.parse(toolCall.function.arguments);
-					if (args.action === 'update' && args.id === todo.id && args.status === 'completed') {
-						todoCompleted = true;
-						console.log('[DOING-PHASE] Todo completed:', todo);
-						agent.completeTodo(todo.id);
-						notification.finish('success');
-						const message = `${agent.getName()} has completed: ${todo.title}`;
-						addDeveloperEvent(message);
-						showNotification(message, 'success');
-						agent.workStatus.phase = 'PLANNING';
+					// Check if this was a todo update that marked our current todo as complete
+					if (toolCall.function.name === 'manage_todos') {
+						const args = JSON.parse(toolCall.function.arguments);
+						if (args.action === 'update' && args.id === todo.id && args.status === 'completed') {
+							todoCompleted = true;
+							console.log('[DOING-PHASE] Todo completed:', todo);
+							// Update todo status through the agent's interface
+							await agent.executeTool('manage_todos', {
+								action: 'update',
+								id: todo.id,
+								status: 'completed'
+							});
+							notification.finish('success');
+							const message = `${agent.getName()} has completed: ${todo.title}`;
+							addDeveloperEvent(message);
+							showNotification(message, 'success');
+							agent.workStatus.phase = 'PLANNING';
+						}
 					}
+
+					currentMessages.push({
+						role: 'tool',
+						name: agent.getName(),
+						tool_call_id: toolCall.id,
+						content: JSON.stringify(result)
+					} as ChatCompletionMessageParam);
 				}
 
-				currentMessages.push({
-					role: 'tool',
-					content: JSON.stringify(result),
-					tool_call_id: toolCall.id
-				});
+				if (!todoCompleted) {
+					currentMessages.push({
+						role: 'user',
+						content: `Please make sure to finish the todo, remaining iterations: ${maxIterations - iterations}`
+					} as ChatCompletionUserMessageParam);
+				}
+			} catch (error: unknown) {
+				const openAIError = error as OpenAIError;
+				if (openAIError?.message?.includes('maximum context length') && !retryWithPruning) {
+					console.log('[DOING-PHASE] Token limit exceeded, pruning messages...');
+					// Get the agent's message log and update our messages
+					const messageLog = agent.getMessageLog();
+					// Keep only 30% of the messages, but always keep the first (system) message
+					const keepCount = Math.max(Math.floor(messageLog.length * 0.3), 1);
+					const prunedMessages = [messageLog[0], ...messageLog.slice(-keepCount)];
+
+					// Update our current messages
+					currentMessages[1] = {
+						role: 'user',
+						content: `The current conversation: <conversation>${JSON.stringify(prunedMessages)}</conversation>`
+					} as ChatCompletionUserMessageParam;
+					retryWithPruning = true;
+					continue;
+				}
+				throw error;
 			}
 
 			console.log(
@@ -260,13 +300,6 @@ async function agentDoDoing(agent: Agent) {
 				notification.finish('error');
 				showNotification(message, 'error');
 				break;
-			} else {
-				currentMessages.push({
-					role: 'user',
-					content: `
-					Please make sure to finish the todo, remaining iterations: ${maxIterations - iterations}
-					`
-				});
 			}
 		}
 	} catch (error) {
