@@ -8,10 +8,17 @@ import type { DialogField, DialogOptions } from '$lib/stores/dialog.svelte';
 export const dialogTool = new Tool(
 	{
 		name: 'show_dialog',
-		description: `Present a dialog form to the user and wait for their response. The dialog will automatically close after the timeout.
+		description: `
+Present a dialog form to the user and wait for their response. The dialog will automatically close after the timeout.
 You can create forms with various input types including text, number, select, checkbox, radio, and file upload.
 For file uploads, specify the target path in the virtual filesystem where the file should be stored.
-The dialog will show a countdown timer to indicate when it will close.`,
+The dialog will show a countdown timer to indicate when it will close.
+
+Rules:
+1. Only use this for files that you need to solve the user's problem.
+2. Do not ask the user to answer questions in a dialog
+3. Do not ask the user to solve the problem themselves using the dialog
+`,
 		parameters: {
 			type: 'object',
 			properties: {
