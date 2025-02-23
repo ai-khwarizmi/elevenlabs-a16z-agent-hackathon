@@ -193,6 +193,9 @@ export class Agent {
 		}
 
 		console.log(`[${this.name}] Updating agent tools`);
+		if (!this.pendingHandRaisingText) {
+			this.pendingHandRaisingText = await this.createIntroMessage();
+		}
 		await updateAgentTools({
 			apiKey: elevenLabsKey,
 			agentId: this.elevenLabsAgentId,
@@ -459,6 +462,64 @@ export class Agent {
 			throw new Error(`Tool "${toolName}" not found`);
 		}
 		return await tool.execute(args, this);
+	}
+
+	async createIntroMessage(): Promise<string> {
+		const isFirstAssistantMessage = this.messageLog.every((msg) => msg.role !== 'assistant');
+		await this.updateChatlogWithGlobalTranscript();
+		let sytemPrompt = '';
+
+		if (isFirstAssistantMessage) {
+			sytemPrompt = `You are about to join this conversation for the first time. You have not said anything yet.
+	Say a quick 5-10 word hello.
+
+Here are your instructions:
+${this.getSystemPrompt()}
+
+Here is the conversation history:
+${JSON.stringify(this.messageLog)}
+`;
+		} else {
+			sytemPrompt = `You are about to say something in this conversation, please write what you want to say next based on the conversation history
+Here are your instructions:
+${this.getSystemPrompt()}
+
+Here is the conversation history:
+${JSON.stringify(this.messageLog)}
+`;
+		}
+		const messages: ChatCompletionMessageParam[] = [
+			{
+				role: 'system',
+				content: sytemPrompt
+			}
+		];
+
+		const completion = await this.getOpenAI().chat.completions.create({
+			model: 'gpt-4o',
+			messages,
+			response_format: {
+				type: 'json_schema',
+				json_schema: {
+					name: 'user_response',
+					strict: true,
+					schema: {
+						type: 'object',
+						properties: {
+							message: {
+								type: 'string',
+								description:
+									'The message that the user wants to say based on the conversation history.'
+							}
+						},
+						required: ['message'],
+						additionalProperties: false
+					}
+				}
+			}
+		});
+
+		return JSON.parse(completion.choices[0].message.content || '{}').message || '';
 	}
 
 	/**
