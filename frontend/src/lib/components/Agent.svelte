@@ -66,83 +66,41 @@
 	onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 	role="button"
 	tabindex="0"
-	class={cn(
-		'group flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3 transition-all duration-200 hover:bg-orange-500/15',
-		agent.getState() === 'ACTIVE' ? 'border-[#FF6222]' : '',
-		agent.getState() === 'IDLE' ? 'border-gray-500' : '',
-		agent.getState() === 'WORKING' ? 'border-white' : 'border-gray-500',
-		agent.isSpeakingNow() ? 'border-orange-500' : ''
-	)}
+	class="h-full w-full relative bg-gray-900 overflow-hidden"
 >
-	<div class="flex w-full flex-col items-center justify-center gap-2">
-		<!-- Agent Info -->
-		<div class="w-full text-center">
-			<h2 class="text-xl font-bold text-white line-clamp-1">
-				{agent.getName()}
-				{#if activeTodos.length > 0}
-					<span
-						class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-1.5 text-xs font-medium text-white shadow-sm shadow-orange-500/20"
-					>
-						{activeTodos.length}
-					</span>
-				{/if}
-			</h2>
-		</div>
-		<!-- Image container -->
-		<div class="relative aspect-square w-full">
+	<div class="absolute inset-0 flex flex-col">
+		<!-- State indicator -->
+		<!-- <div class="absolute top-2 left-2 z-10">
+			<TextScramble
+				text={agent.getState()}
+				class="rounded-full px-3 py-1 text-sm font-medium {stateClasses}"
+			/>
+		</div> -->
+
+		<!-- Agent video frame -->
+		<div class="flex-1 relative">
 			{#if agent.getProfilePicture()}
 				<img
 					src={agent.getProfilePicture()}
 					alt={agent.getName()}
-					class="h-full w-full rounded-full bg-gray-900 object-cover shadow-lg ring-2 ring-white/20"
+					class="absolute inset-0 w-full h-full object-cover"
 				/>
 			{:else}
-				<div
-					class="flex h-full w-full items-center justify-center rounded-full bg-gray-900 shadow-lg ring-2 ring-white/20"
-				>
-					<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
-				</div>
-			{/if}
-			{#if agent.getState() === 'ACTIVE'}
-				<div
-					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border-2 border-[#FF6222] bg-white shadow-lg"
-				>
-					{#if agent.getState() === 'ACTIVE'}
-						<div class="audio-wave">
-							<div class="bar"></div>
-							<div class="bar"></div>
-							<div class="bar"></div>
-						</div>
-					{:else}
-						<div class="typing-dots">
-							<div class="dot"></div>
-							<div class="dot"></div>
-							<div class="dot"></div>
-						</div>
-					{/if}
+				<div class="absolute inset-0 flex items-center justify-center bg-gray-800">
+					<span class="text-6xl text-white/50">{agent.getName()[0].toUpperCase()}</span>
 				</div>
 			{/if}
 		</div>
-		<!-- State text -->
-		{#if agent.getState() === 'ACTIVE' && agents.mode === 'VOICE'}
-			{#if agent.getIsConnectedToConversation()}
-				<span class="text-center font-['Anonymous_Pro'] text-lg font-bold text-green-500">
-					Connected
-				</span>
-			{:else}
-				<span class="text-center font-['Anonymous_Pro'] text-lg font-bold text-red-500">
-					Connecting...
-				</span>
-			{/if}
-		{:else}
-			<span
-				class="text-center font-['Anonymous_Pro'] text-lg font-bold {agent.getState() === 'ACTIVE'
-					? 'text-[#FF6222]'
-					: 'text-white'}"
-			>
-				{agent.getState()}
-			</span>
-		{/if}
+
+		<!-- Agent info overlay at bottom -->
+		<div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent px-4 py-2">
+			<div class="flex items-center gap-2">
+				<h3 class="text-lg font-semibold text-white truncate">
+					{agent.getName().replaceAll('_', ' ')}
+				</h3>
+				<span class="text-sm text-white">({agent.getTodos().length})</span>
+			</div>
+		</div>
 	</div>
 </div>
 

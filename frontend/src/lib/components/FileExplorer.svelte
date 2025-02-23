@@ -2,6 +2,7 @@
 	import { filesystem } from '$lib/stores/filesystem.svelte';
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
+	import AppButton from './AppButton.svelte';
 
 	// State
 	let isExpanded = $state(true);
@@ -293,12 +294,11 @@
 		class:translate-y-68={!isExpanded}
 	>
 		{#if !isExpanded}
-			<button
-				class="absolute -top-16 left-4 border border-white bg-black px-3 py-2 font-['Anonymous_Pro'] text-sm text-white transition-all duration-200 hover:border-[#FF6222]"
-				onclick={() => (isExpanded = true)}
+			<div
+				class="absolute -top-20 left-4"
 			>
-				Show Files
-			</button>
+				<AppButton text="Show Files" variant="secondary" onClick={() => (isExpanded = true)} />
+			</div>
 		{/if}
 		<div class="flex h-full w-[800px] flex-col bg-black shadow-lg">
 			<!-- Header -->

@@ -11,6 +11,7 @@
 	import Timer from '$lib/components/Timer.svelte';
 	import { sessions } from '$lib/stores/agents.svelte';
 	import ApiKeyInputs from '$lib/components/ApiKeyInputs.svelte';
+	import Dots from '$lib/assets/icons/dots.svg';
 
 	let message = $state('');
 	let isProcessing = $state(false);
@@ -23,7 +24,7 @@
 
 	let activeAgent = $derived(currentAgents.find((agent) => agent.getState() === 'ACTIVE'));
 
-		// Load keys from localStorage on mount
+	// Load keys from localStorage on mount
 	$effect(() => {
 		const {
 			openaiKey: storedOpenAIKey,
@@ -88,36 +89,44 @@
 	/>
 </svelte:head>
 
-<ChatTranscript bind:isExpanded={isTranscriptExpanded}  showButton={agents.list.length > 0}/>
+<ChatTranscript bind:isExpanded={isTranscriptExpanded} showButton={agents.list.length > 0} />
 <ApiKeyInputs on:keysUpdated={handleKeysUpdated} />
 
-<div class="transition-[padding] duration-300 p-8" class:pr-96={isTranscriptExpanded}>
-	<div class="bg-black text-white">
-
+<div
+	class="p-8 transition-[padding] duration-300"
+	class:pr-96={isTranscriptExpanded}
+	style="background-image: url({Dots}); background-repeat: repeat;"
+>
+	<div class=" text-white">
 		{#if currentAgents.length === 0}
 			<main class="flex min-h-[calc(100vh-200px)] items-center justify-center">
 				<div class="flex w-full max-w-3xl flex-col items-center gap-12">
-					
-					<div class="flex flex-col items-center text-center gap-6">
+					<div class="flex flex-col items-center gap-6 text-center">
 						<div>
 							<h1 class="text-4xl font-bold">Welcome to</h1>
 							<Logo size="large" />
 						</div>
-						<p class="text-lg text-gray-400 max-w-xl">
+						<p class="max-w-xl text-lg text-gray-400">
 							Your multi-agent command center for strategic conversations and decision making.
 						</p>
 					</div>
 
 					{#if apiKeysNotSet}
-						<div class="flex flex-col items-center gap-6 bg-gray-900/50 p-8 rounded-lg border border-gray-800">
+						<div
+							class="flex flex-col items-center gap-6 rounded-lg border border-gray-800 bg-gray-900/50 p-8"
+						>
 							<div class="flex flex-col items-center gap-2">
 								<h2 class="text-xl font-semibold">Get Started</h2>
-								<p class="text-sm text-gray-400">Configure your API keys to begin your first session</p>
+								<p class="text-sm text-gray-400">
+									Configure your API keys to begin your first session
+								</p>
 							</div>
 							<AppButton text="Set API Keys" variant="primary" onClick={() => showApiKeysPopup()} />
 						</div>
 					{:else}
-						<div class="flex flex-col items-center gap-6 bg-green-900/50 p-8 rounded-lg border border-green-800">
+						<div
+							class="flex flex-col items-center gap-6 rounded-lg border border-green-800 bg-green-900/50 p-8"
+						>
 							<div class="flex flex-col items-center gap-2">
 								<h2 class="text-xl font-semibold">Ready to Begin</h2>
 								<p class="text-sm text-gray-400">Start your first session with our AI agents</p>
@@ -125,89 +134,119 @@
 							<AppButton text="Start Session" variant="primary" onClick={handleCreateSession} />
 						</div>
 					{/if}
-
 				</div>
 			</main>
 		{:else}
 			<!-- Agents Display Section -->
-			<div class="pb-40 mx-auto mb-8 w-full max-w-5xl">
-				<h2 class="mb-4 text-xl font-semibold">
-					Active Agents ({currentAgents.length})
-				</h2>
-				<div class="grid gap-4" 
-					class:grid-cols-1={currentAgents.length === 1}
-					class:grid-cols-2={currentAgents.length === 2}
-					class:grid-cols-3={currentAgents.length === 3 || currentAgents.length === 4}
-					class:grid-cols-4={currentAgents.length > 4}
-					style="grid-auto-rows: minmax(300px, 1fr);"
+			<div class="h-screen">
+				<!-- Grid layout that adapts based on number of participants -->
+				<div
+					class={`mx-auto grid h-3/4 max-w-5xl gap-4 ${
+						currentAgents.length === 1
+							? 'place-items-center'
+							: currentAgents.length === 2
+								? 'grid-cols-2'
+								: currentAgents.length === 3
+									? 'grid-cols-2 md:grid-cols-3'
+									: currentAgents.length === 4
+										? 'grid-cols-2'
+										: 'grid-cols-2 md:grid-cols-3'
+					}`}
 				>
-					{#each currentAgents as agent}
-						<div class="h-full" class:mx-auto={currentAgents.length === 1} class:max-w-md={currentAgents.length === 1}>
-							<Agent {agent} />
+					{#each [...currentAgents].sort((a, b) => {
+						if (a.getState() === 'ACTIVE') return -1;
+						if (b.getState() === 'ACTIVE') return 1;
+						return 0;
+					}) as agent}
+						<div
+							class={`relative h-full ${currentAgents.length === 1 ? 'aspect-video w-full max-w-4xl' : ''}`}
+						>
+							<div
+								class="absolute inset-0 border-3 transition-colors duration-300"
+								class:border-[#FF6222]={agent.getState() === 'ACTIVE' || agent.isSpeakingNow()}
+								class:border-gray-800={agent.getState() !== 'ACTIVE' && !agent.isSpeakingNow()}
+							>
+								<Agent {agent} />
+
+								<!-- Speaking indicator -->
+								{#if agent.isSpeakingNow()}
+									<div
+										class="absolute right-2 top-2 flex items-center gap-2 rounded-full bg-[#FF6222] px-3 py-1"
+									>
+										<div class="h-2 w-2 animate-pulse rounded-full bg-white"></div>
+										<span class="text-sm text-white">Speaking</span>
+									</div>
+								{:else}
+									<!-- Connection status -->
+									<div class="absolute right-2 top-2 flex items-center gap-2">
+										<div
+											class="flex items-center gap-2 rounded-full bg-black/30 px-2 py-1 text-sm text-white"
+										>
+											<div
+												class="h-2 w-2 rounded-full {agent.getState() === 'ACTIVE'
+													? 'bg-green-500'
+													: 'bg-gray-300'}"
+											></div>
+											<span>{agent.getState() === 'ACTIVE' ? 'Connected' : 'Idle'}</span>
+										</div>
+									</div>
+								{/if}
+							</div>
 						</div>
 					{/each}
 				</div>
 			</div>
 
-			<!-- Search and Controls Section -->
-			<div
-				class="fixed bottom-4 right-0 p-4 transition-transform duration-300"
-				class:-left-96={isTranscriptExpanded}
-				class:left-0={!isTranscriptExpanded}
-			>
-				<div class="mx-auto w-full max-w-2xl items-end justify-center space-y-4">
-					{#if response}
-						<div class="bg-black border border-white p-4 text-white relative">
-							<button 
-								class="absolute top-2 right-2 text-white/50 hover:text-white text-sm"
-								onclick={() => response = ''}
-							>
-								dismiss
-							</button>
-							<h3 class="text-sm text-[#FF6222] mb-1">{responseAgentName}:</h3>
-							{response}
-						</div>
-					{/if}
-
-					{#if error}
-						<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
-							{error}
-						</div>
-					{/if}
-					<div class="flex items-center justify-center gap-4">
-						<!-- <div class="flex-1">
-							<SearchBar
-								bind:value={message}
-								onSearch={handleMessage}
-								placeholder="What can we help you with?"
-							/>
-						</div> -->
-						{#if agents.mode === 'VOICE'}
-							{#if activeAgent?.getCallStartTime()}
-								<div class="absolute bottom-full">
-									<Timer startTime={activeAgent.getCallStartTime()} />
-								</div>
-							{/if}
-							{#if activeAgent?.getIsConnectedToConversation()}
-								<AppButton
-									text="Hang Up"
-									variant="destructive"
-									icon={HangUpIcon}
-									onClick={() => (agents.mode = 'TEXT')}
-								/>
-							{:else}
-								<AppButton text="Connecting..." variant="primary" icon={MicIcon} disabled={true} />
-							{/if}
-						{:else}
-							<AppButton
-								text="Live Chat"
-								variant="success"
-								icon={MicIcon}
-								onClick={() => (agents.mode = 'VOICE')}
-							/>
+			<!-- Controls overlay at the bottom -->
+			<div class="absolute bottom-0 left-0 right-0 z-10 h-24">
+				<div class="absolute bottom-4 left-1/2 flex -translate-x-1/2 items-center gap-4">
+					{#if agents.mode === 'VOICE'}
+						{#if activeAgent?.getCallStartTime()}
+							<div class="rounded-full border border-white bg-black px-4 py-2 backdrop-blur-sm">
+								<Timer startTime={activeAgent.getCallStartTime()} />
+							</div>
 						{/if}
-					</div>
+						{#if activeAgent?.getIsConnectedToConversation()}
+							<AppButton
+								text="End Call"
+								variant="destructive"
+								icon={HangUpIcon}
+								onClick={() => (agents.mode = 'TEXT')}
+							/>
+						{:else}
+							<AppButton text="Connecting..." variant="primary" icon={MicIcon} disabled={true} />
+						{/if}
+					{:else}
+						<AppButton
+							text="Join Call"
+							variant="success"
+							icon={MicIcon}
+							onClick={() => (agents.mode = 'VOICE')}
+						/>
+					{/if}
 				</div>
+			</div>
+
+			<!-- Search and Controls Section -->
+			<div class="mx-auto w-full max-w-2xl items-end justify-center space-y-4">
+				{#if response}
+					<div class="relative border border-white bg-black p-4 text-white">
+						<button
+							class="absolute right-2 top-2 text-sm text-white/50 hover:text-white"
+							onclick={() => (response = '')}
+						>
+							dismiss
+						</button>
+						<h3 class="mb-1 text-sm text-[#FF6222]">{responseAgentName}:</h3>
+						{response}
+					</div>
+				{/if}
+
+				{#if error}
+					<div class="rounded-md bg-red-50 p-4 text-sm text-red-700">
+						{error}
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>
