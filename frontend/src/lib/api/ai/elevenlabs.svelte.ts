@@ -185,6 +185,7 @@ export async function updateAgentTools(options: {
 	agentId: string;
 	agent: Agent;
 	tools?: Tool[];
+	firstMessage?: string;
 }): Promise<void> {
 	try {
 		const toolsArray = makeToolsArray(options.tools ?? []);
@@ -202,7 +203,8 @@ export async function updateAgentTools(options: {
 							prompt: options.agent.getSystemPrompt(),
 							tools: toolsArray,
 							llm: 'gpt-4o'
-						}
+						},
+						first_message: options.firstMessage
 					},
 					conversation: {
 						client_events: [

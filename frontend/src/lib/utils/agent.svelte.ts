@@ -111,7 +111,6 @@ export class Agent {
 
 	private activeStartTimestamp = $state<number | null>(null);
 	private lastConsiderRaisingHandTimestamp = $state<number | null>(null);
-	private pendingHandRaisingAudioBuffer = $state<AudioBuffer | null>(null);
 	private pendingHandRaisingText = $state<string | null>(null);
 
 	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
@@ -197,8 +196,12 @@ export class Agent {
 			apiKey: elevenLabsKey,
 			agentId: this.elevenLabsAgentId,
 			agent: this,
-			tools: this.getTools()
+			tools: this.getTools(),
+			firstMessage: this.pendingHandRaisingText || undefined
 		});
+		if (this.pendingHandRaisingText) {
+			this.pendingHandRaisingText = null;
+		}
 		console.log(`[${this.name}] Agent tools updated successfully`);
 
 		const clientTools: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
@@ -745,26 +748,6 @@ export class Agent {
 		return this.state;
 	}
 
-	processPendingHandRaising(): void {
-		if (this.pendingHandRaisingAudioBuffer && this.pendingHandRaisingText) {
-			this.messageLog = [
-				...this.messageLog,
-				{
-					id: generateUniqueId(),
-					role: 'assistant',
-					content: this.pendingHandRaisingText,
-					timestamp: Date.now(),
-					name: this.name
-				}
-			];
-			if (agents.mode === 'VOICE') {
-				this.playPendingAudio();
-			}
-			this.pendingHandRaisingText = null;
-			this.pendingHandRaisingAudioBuffer = null;
-		}
-	}
-
 	onStateChange(oldState: AgentState, newState: AgentState): void {
 		console.log('State changed from', oldState, 'to', newState);
 
@@ -772,12 +755,10 @@ export class Agent {
 			case 'VOICE_ACTIVE':
 				this.joinConversation();
 				this.activeStartTimestamp = Date.now();
-				this.processPendingHandRaising();
 				break;
 
 			case 'TEXT_ACTIVE':
 				this.activeStartTimestamp = Date.now();
-				this.processPendingHandRaising();
 				break;
 
 			default:
@@ -934,37 +915,8 @@ export class Agent {
 
 	raiseHand(urgency: number, contribution: string): void {
 		console.log('raising hand for ', this.name, 'with contribution:', contribution);
+		this.pendingHandRaisingText = contribution;
 		this.safeTransition('RAISED_HAND');
-
-		// Generate and store audio
-		this.generateAudio(contribution)
-			.then((arrayBuffer) => {
-				// Create an audio context and decode the buffer
-				const audioContext = new AudioContext();
-				audioContext
-					.decodeAudioData(arrayBuffer, (buffer) => {
-						this.pendingHandRaisingAudioBuffer = buffer;
-					})
-					.catch((error) => {
-						console.error('Failed to decode audio data:', error);
-					});
-			})
-			.catch((error) => {
-				console.error('Failed to generate audio:', error);
-			});
-	}
-
-	/**
-	 * Play the pending audio buffer if it exists
-	 */
-	private playPendingAudio(): void {
-		if (this.pendingHandRaisingAudioBuffer) {
-			const audioContext = new AudioContext();
-			const source = audioContext.createBufferSource();
-			source.buffer = this.pendingHandRaisingAudioBuffer;
-			source.connect(audioContext.destination);
-			source.start(0);
-		}
 	}
 
 	/**
