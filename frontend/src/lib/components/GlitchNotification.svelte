@@ -158,14 +158,14 @@
 	}
 </script>
 
-<div class="pointer-events-none fixed right-0 bottom-0 z-50 flex max-w-xs flex-col items-end p-2">
+<div class="pointer-events-none fixed right-0 bottom-0 z-50 flex max-w-xs flex-col items-end pr-4 pb-4">
 	{#each notifications as notification (notification.id)}
 		<div
 			transition:fade={{ duration: 200 }}
 			class="pointer-events-auto mb-1.5 w-full overflow-hidden"
 		>
 			<div
-				class="relative border bg-gradient-to-r from-black to-black/80 text-white backdrop-blur-sm
+				class="relative border bg-gradient-to-r from-black to-black/80 text-white backdrop-blur-sm p-2
                      {getTypeStyles(notification)}"
 			>
 				<!-- Scanlines effect -->
@@ -185,7 +185,7 @@
 				<div class="relative px-2 py-1.5">
 					<!-- Content -->
 					<div class="flex items-center justify-between gap-1.5">
-						<div class="flex-1 font-mono text-xs leading-tight">
+						<div class="flex-1 font-mono text-sm leading-tight">
 							<TextScramble text={notification.message} duration={800} />
 						</div>
 						<button

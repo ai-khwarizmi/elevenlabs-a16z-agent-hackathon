@@ -6,6 +6,7 @@
 	import '../app.css';
 	import Navigation from '$lib/components/Navigation.svelte';
 	import GlitchNotification from '$lib/components/GlitchNotification.svelte';
+	import Dots from '$lib/assets/icons/dots.svg';
 
 	let { children } = $props();
 	let isTranscriptExpanded = $state(false);
@@ -18,8 +19,7 @@
 <GlitchNotification />
 <FilesystemManager />
 <Navigation bind:isTranscriptExpanded />
-<div class="pt-16 transition-[padding] duration-300" class:pr-96={isTranscriptExpanded}>
+<div class="transition-[padding] duration-300 pt-16 bg-black" class:pr-96={isTranscriptExpanded}>
 	{@render children()}
 </div>
-<!-- <ChatTranscript bind:isExpanded={isTranscriptExpanded} /> -->
 <FileExplorer />

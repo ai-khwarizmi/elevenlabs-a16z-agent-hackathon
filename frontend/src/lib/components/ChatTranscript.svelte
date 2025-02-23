@@ -30,7 +30,7 @@
 		<!-- Footer with toggle button -->
 		 {#if !isExpanded && showButton}
 		<div class="relative">
-			<div class="absolute top-2 -left-50">
+			<div class="absolute top-6 -left-53">
 				<AppButton 
 					variant="secondary" 
 					text={isExpanded ? '>' : 'Show transcript'} 

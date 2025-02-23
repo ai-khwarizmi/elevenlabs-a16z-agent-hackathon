@@ -3,6 +3,7 @@
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
 	import TextScramble from './TextScramble.svelte';
+	import AppButton from './AppButton.svelte';
 
 	// State
 	let isExpanded = $state(true);
@@ -468,12 +469,11 @@
 		{/each}
 
 		{#if !isExpanded}
-			<button
-				class="absolute -top-16 left-4 border border-white bg-black px-3 py-2 font-['Anonymous_Pro'] text-sm text-white transition-all duration-200 hover:border-[#FF6222]"
-				onclick={() => (isExpanded = true)}
+			<div
+				class="absolute -top-20 left-4"
 			>
-				<TextScramble text="Show Files" duration={400} />
-			</button>
+				<AppButton text="Show Files" variant="secondary" onClick={() => (isExpanded = true)} />
+			</div>
 		{/if}
 		<div class="flex h-full w-full flex-col bg-black shadow-lg">
 			<!-- Header -->
