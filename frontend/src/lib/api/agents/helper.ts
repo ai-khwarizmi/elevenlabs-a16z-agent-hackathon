@@ -7,6 +7,7 @@ import { handOffMicTool } from '../tools/hand_off_mic';
 import { searchTool } from '../tools/search';
 import { sandboxTool } from '../tools/sandbox';
 import { filesystemTool } from '../tools/filesystem';
+import { dialogTool } from '../tools/dialog';
 import { registerTool } from '$lib/utils/tool-registry.svelte';
 
 // Register all base tools
@@ -16,6 +17,7 @@ registerTool(handOffMicTool);
 registerTool(searchTool);
 registerTool(sandboxTool);
 registerTool(filesystemTool);
+registerTool(dialogTool);
 
 export const agentBaseTools: Tool[] = [
 	inviteTool,
@@ -23,7 +25,8 @@ export const agentBaseTools: Tool[] = [
 	handOffMicTool,
 	searchTool,
 	sandboxTool,
-	filesystemTool
+	filesystemTool,
+	dialogTool
 ];
 
 /**
@@ -48,7 +51,11 @@ INTERACTION FLOW:
 
 Remember: Your value comes from efficient expert matching, not from extended conversation.`;
 
-	const chiefOfStaffAgent = new Agent('Chief of Staff', personality, [inviteTool, handOffMicTool]);
+	const chiefOfStaffAgent = new Agent('Chief of Staff', personality, [
+		inviteTool,
+		handOffMicTool,
+		dialogTool
+	]);
 
 	// Add to global agent state
 	agents.addAgent(chiefOfStaffAgent);
