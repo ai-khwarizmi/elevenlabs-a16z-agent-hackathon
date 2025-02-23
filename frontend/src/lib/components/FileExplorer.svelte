@@ -469,9 +469,7 @@
 		{/each}
 
 		{#if !isExpanded}
-			<div
-				class="absolute -top-20 left-4"
-			>
+			<div class="absolute -top-20 left-4">
 				<AppButton text="Show Files" variant="secondary" onClick={() => (isExpanded = true)} />
 			</div>
 		{/if}
@@ -530,9 +528,9 @@
 			</div>
 
 			<!-- Content -->
-			<div class="flex h-full">
+			<div class="flex h-full overflow-hidden">
 				<!-- File Tree -->
-				<div class="w-1/3 overflow-y-auto border-r border-white p-2">
+				<div class="flex w-1/3 flex-col overflow-hidden border-r border-white">
 					{#if isLoading}
 						<div class="flex items-center justify-center p-4">
 							<div
@@ -540,89 +538,91 @@
 							></div>
 						</div>
 					{:else}
-						<div class="space-y-1">
-							{#each files as file}
-								{@const isDirectory = fileStats[file]}
-								<button
-									class="group flex w-full items-center gap-2 rounded p-1 text-left text-sm hover:bg-gray-800"
-									class:bg-gray-800={selectedFile === joinPaths(currentPath, file)}
-									onclick={() => loadFileContent(joinPaths(currentPath, file))}
-								>
-									<div class="relative flex items-center">
-										{#if isDirectory}
-											<!-- Folder Arrow -->
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												class="absolute -left-1 h-3 w-3 text-white opacity-0 transition-opacity group-hover:opacity-100"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
+						<div class="h-full overflow-y-auto p-2">
+							<div class="space-y-1">
+								{#each files as file}
+									{@const isDirectory = fileStats[file]}
+									<button
+										class="group flex w-full items-center gap-2 rounded p-1 text-left text-sm hover:bg-gray-800"
+										class:bg-gray-800={selectedFile === joinPaths(currentPath, file)}
+										onclick={() => loadFileContent(joinPaths(currentPath, file))}
+									>
+										<div class="relative flex items-center">
+											{#if isDirectory}
+												<!-- Folder Arrow -->
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="absolute -left-1 h-3 w-3 text-white opacity-0 transition-opacity group-hover:opacity-100"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="2"
+														d="M9 5l7 7-7 7"
+													/>
+												</svg>
+												<!-- Folder Icon -->
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-5 w-5"
+													fill="#FFA500"
+													viewBox="0 0 24 24"
+													stroke="#D97706"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="1.5"
+														d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+													/>
+												</svg>
+											{:else if isMarkdownFile(file)}
+												<!-- Markdown Icon -->
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-5 w-5"
+													viewBox="0 0 24 24"
+													fill="none"
+													stroke="#FF6222"
 													stroke-width="2"
-													d="M9 5l7 7-7 7"
-												/>
-											</svg>
-											<!-- Folder Icon -->
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												class="h-5 w-5"
-												fill="#FFA500"
-												viewBox="0 0 24 24"
-												stroke="#D97706"
-											>
-												<path
 													stroke-linecap="round"
 													stroke-linejoin="round"
-													stroke-width="1.5"
-													d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
-												/>
-											</svg>
-										{:else if isMarkdownFile(file)}
-											<!-- Markdown Icon -->
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												class="h-5 w-5"
-												viewBox="0 0 24 24"
-												fill="none"
-												stroke="#FF6222"
-												stroke-width="2"
-												stroke-linecap="round"
-												stroke-linejoin="round"
-											>
-												<path d="M14 3v4a1 1 0 001 1h4" />
-												<path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
-												<path d="M9 13h6" />
-												<path d="M9 17h3" />
-											</svg>
-										{:else}
-											<!-- Regular File Icon -->
-											<svg
-												xmlns="http://www.w3.org/2000/svg"
-												class="h-5 w-5"
-												fill="none"
-												viewBox="0 0 24 24"
-												stroke="currentColor"
-											>
-												<path
-													stroke-linecap="round"
-													stroke-linejoin="round"
-													stroke-width="1.5"
-													d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-												/>
-											</svg>
-										{/if}
-									</div>
-									<span class="relative pl-1">
-										<TextScramble text={file} duration={400} />
-										{#if isDirectory}
-											<span class="ml-1 text-xs text-white">/</span>
-										{/if}
-									</span>
-								</button>
-							{/each}
+												>
+													<path d="M14 3v4a1 1 0 001 1h4" />
+													<path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+													<path d="M9 13h6" />
+													<path d="M9 17h3" />
+												</svg>
+											{:else}
+												<!-- Regular File Icon -->
+												<svg
+													xmlns="http://www.w3.org/2000/svg"
+													class="h-5 w-5"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														stroke-linecap="round"
+														stroke-linejoin="round"
+														stroke-width="1.5"
+														d="M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+													/>
+												</svg>
+											{/if}
+										</div>
+										<span class="relative pl-1">
+											<TextScramble text={file} duration={400} />
+											{#if isDirectory}
+												<span class="ml-1 text-xs text-white">/</span>
+											{/if}
+										</span>
+									</button>
+								{/each}
+							</div>
 						</div>
 					{/if}
 				</div>
@@ -650,5 +650,36 @@
 	/* Prevent text selection while resizing */
 	:global(body.resizing) {
 		user-select: none;
+	}
+
+	/* Custom Scrollbar Styling */
+	:global(*::-webkit-scrollbar) {
+		width: 8px;
+		height: 8px;
+	}
+
+	:global(*::-webkit-scrollbar-track) {
+		background: #1a1a1a;
+		border-radius: 4px;
+	}
+
+	:global(*::-webkit-scrollbar-thumb) {
+		background: #333333;
+		border-radius: 4px;
+		border: 2px solid #1a1a1a;
+	}
+
+	:global(*::-webkit-scrollbar-thumb:hover) {
+		background: #444444;
+	}
+
+	:global(*::-webkit-scrollbar-corner) {
+		background: #1a1a1a;
+	}
+
+	/* Firefox scrollbar styling */
+	:global(*) {
+		scrollbar-width: thin;
+		scrollbar-color: #333333 #1a1a1a;
 	}
 </style>
