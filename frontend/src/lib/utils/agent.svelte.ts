@@ -244,7 +244,6 @@ export class Agent {
 						this.autoEndConversation = false;
 					}
 				} else if (mode === 'speaking') {
-					//
 				}
 			},
 			onDebug: (props) => {
@@ -265,6 +264,14 @@ export class Agent {
 			},
 			onConnect: () => {
 				console.log(`[${this.name}] Connected to conversation successfully`);
+				// disconnect all agents except the newest one
+				agents.list.forEach((agent) => {
+					if (agent === this) {
+						return;
+					}
+					agent.leaveConversation(true);
+					agent.makeIdle();
+				});
 			},
 			onUnhandledClientToolCall: (toolCall) => {
 				console.warn(`[${this.name}] Unhandled tool call:`, toolCall);
@@ -782,7 +789,7 @@ export class Agent {
 
 			default:
 				if (oldState === 'VOICE_ACTIVE') {
-					this.leaveConversation();
+					this.leaveConversation(true);
 				}
 				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
 				this.activeStartTimestamp = null;
