@@ -153,13 +153,13 @@
 						}
 
 						::-webkit-scrollbar-thumb {
-							background: #333333;
+							background: #555555;
 							border-radius: 4px;
 							border: 2px solid #1a1a1a;
 						}
 
 						::-webkit-scrollbar-thumb:hover {
-							background: #444444;
+							background: #666666;
 						}
 
 						::-webkit-scrollbar-corner {
@@ -169,7 +169,7 @@
 						/* Firefox scrollbar styling */
 						* {
 							scrollbar-width: thin;
-							scrollbar-color: #333333 #1a1a1a;
+							scrollbar-color: #555555 #1a1a1a;
 						}
 
 						${
@@ -696,13 +696,13 @@
 	}
 
 	:global(*::-webkit-scrollbar-thumb) {
-		background: #333333;
+		background: #555555;
 		border-radius: 4px;
 		border: 2px solid #1a1a1a;
 	}
 
 	:global(*::-webkit-scrollbar-thumb:hover) {
-		background: #444444;
+		background: #666666;
 	}
 
 	:global(*::-webkit-scrollbar-corner) {
@@ -712,6 +712,6 @@
 	/* Firefox scrollbar styling */
 	:global(*) {
 		scrollbar-width: thin;
-		scrollbar-color: #333333 #1a1a1a;
+		scrollbar-color: #555555 #1a1a1a;
 	}
 </style>
