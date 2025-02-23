@@ -224,7 +224,7 @@ export class Agent {
 			participants: agents.list
 				.map(
 					(agent, index) =>
-						`${index + 1}. ${agent.getName()}${agent === this ? ' (this is you!)' : ''}`
+						`${index + 1}. ${agent.getName()} (ID: ${agent.id})${agent === this ? ' (this is you!)' : ''}`
 				)
 				.join('\n')
 		};
