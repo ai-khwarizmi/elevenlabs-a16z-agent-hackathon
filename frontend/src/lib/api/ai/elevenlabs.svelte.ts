@@ -197,6 +197,7 @@ export async function updateAgentTools(options: {
 				'Content-Type': 'application/json'
 			},
 			body: JSON.stringify({
+				name: options.agent.getName(),
 				conversation_config: {
 					agent: {
 						prompt: {
