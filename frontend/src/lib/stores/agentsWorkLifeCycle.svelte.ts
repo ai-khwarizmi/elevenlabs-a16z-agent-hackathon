@@ -1,7 +1,7 @@
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { addDeveloperEvent } from './chatlog.svelte';
-import { showNotification, createProgressNotification } from './notifications';
+import { showNotification, createProgressNotification } from './notifications.svelte';
 
 type AgentWorkPhase = 'PLANNING' | 'DOING';
 

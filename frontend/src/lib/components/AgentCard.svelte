@@ -16,9 +16,14 @@
 	});
 
 	$effect(() => {
-		agent.getTodos().then((newTodos) => {
-			todos = newTodos;
-		});
+		const hasTodoTool = agent
+			.getTools()
+			.some((tool) => tool.getDefinition().function.name === 'manage_todos');
+		if (hasTodoTool) {
+			agent.getTodos().then((newTodos) => {
+				todos = newTodos;
+			});
+		}
 	});
 
 	let stateClasses = $derived(() => {

@@ -6,7 +6,7 @@
 		initializeNotifications,
 		type NotificationType,
 		type ProgressNotification
-	} from '$lib/stores/notifications';
+	} from '$lib/stores/notifications.svelte';
 
 	type BaseNotificationData = {
 		id: string;
@@ -158,14 +158,16 @@
 	}
 </script>
 
-<div class="pointer-events-none fixed right-0 bottom-0 z-50 flex max-w-xs flex-col items-end pr-4 pb-4">
+<div
+	class="pointer-events-none fixed right-0 bottom-0 z-50 flex max-w-xs flex-col items-end pr-4 pb-4"
+>
 	{#each notifications as notification (notification.id)}
 		<div
 			transition:fade={{ duration: 200 }}
 			class="pointer-events-auto mb-1.5 w-full overflow-hidden"
 		>
 			<div
-				class="relative border bg-gradient-to-r from-black to-black/80 text-white backdrop-blur-sm p-2
+				class="relative border bg-gradient-to-r from-black to-black/80 p-2 text-white backdrop-blur-sm
                      {getTypeStyles(notification)}"
 			>
 				<!-- Scanlines effect -->

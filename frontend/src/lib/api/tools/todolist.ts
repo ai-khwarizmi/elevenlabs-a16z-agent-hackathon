@@ -1,7 +1,7 @@
 import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
 import { filesystem } from '$lib/stores/filesystem.svelte';
 import { normalizeAgentName } from '$lib/stores/chatlog.svelte';
-import { showNotification } from '$lib/stores/notifications';
+import { showNotification } from '$lib/stores/notifications.svelte';
 
 const DEBUG = false;
 

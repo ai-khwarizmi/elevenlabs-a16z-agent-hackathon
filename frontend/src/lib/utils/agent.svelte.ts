@@ -22,7 +22,7 @@ import { getGlobalChatlog, normalizeAgentName, addAiJoinEvent } from '$lib/store
 import { Conversation } from '@11labs/client';
 import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
 import type { AgentWorkStatus } from '$lib/stores/agentsWorkLifeCycle.svelte';
-import { createProgressNotification } from '$lib/stores/notifications';
+import { createProgressNotification } from '$lib/stores/notifications.svelte';
 
 export type AgentState = 'IDLE' | 'ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
@@ -679,6 +679,17 @@ ${JSON.stringify(this.messageLog)}
 	 * Get the agent's todos
 	 */
 	async getTodos(): Promise<Todo[]> {
+		const hasTodoTool = this.getTools().some(
+			(tool) => tool.getDefinition().function.name === 'manage_todos'
+		);
+		if (!hasTodoTool) {
+			return [];
+		}
+
+		const todoTool = getTool('manage_todos');
+		if (!todoTool) {
+			return [];
+		}
 		const result = (await this.executeTool('manage_todos', { action: 'list' })) as TodoToolResult;
 		if (result.success && result.todos) {
 			this.todos = result.todos;

@@ -1,5 +1,5 @@
 import { generateUniqueId, type TimestampedMessage } from '$lib/types/messages';
-import { showNotification } from './notifications';
+import { showNotification } from './notifications.svelte';
 
 // Global state for developer events
 let developerEvents = $state<TimestampedMessage[]>([]);
