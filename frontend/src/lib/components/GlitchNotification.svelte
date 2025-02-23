@@ -147,7 +147,7 @@
 			case 'error':
 				return 'border-red-500 from-red-500/20';
 			default:
-				return 'border-[#FF6222] from-[#FF6222]/20';
+				return 'border-white/20 from-white/10';
 		}
 	}
 </script>
