@@ -6,7 +6,7 @@
     export let type: 'button' | 'submit' | 'reset' = 'button';
     export let disabled: boolean = false;
   
-    const baseClasses = "inline-flex items-center justify-center font-medium transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
+    const baseClasses = "inline-flex cursor-pointer items-center justify-center font-medium transition-all duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed";
     
     const variantClasses = {
       primary: "bg-[#FF6222] hover:bg-[#e55820] text-white",
