@@ -1,14 +1,30 @@
 <script lang="ts">
-	import { fade } from 'svelte/transition';
+	import { fade, fly } from 'svelte/transition';
 	import TextScramble from './TextScramble.svelte';
-	import { initializeNotifications } from '$lib/stores/notifications';
+	import {
+		initializeNotifications,
+		type NotificationType,
+		type ProgressNotification
+	} from '$lib/stores/notifications';
 
-	type NotificationData = {
+	type BaseNotificationData = {
 		id: string;
 		message: string;
-		type?: 'info' | 'success' | 'warning' | 'error';
+		type?: NotificationType;
 		duration?: number;
 	};
+
+	type StandardNotificationData = BaseNotificationData & {
+		isProgress?: false;
+	};
+
+	type ProgressNotificationData = BaseNotificationData & {
+		isProgress: true;
+		progress: number;
+		state?: 'active' | 'success' | 'error';
+	};
+
+	type NotificationData = StandardNotificationData | ProgressNotificationData;
 
 	let notifications = $state<NotificationData[]>([]);
 	let notificationBuffer = $state<NotificationData[]>([]);
@@ -35,10 +51,12 @@
 				notifications = [...notifications, notification];
 				lastNotificationTime = Date.now();
 
-				// Remove the notification after its duration
-				setTimeout(() => {
-					notifications = notifications.filter((n) => n.id !== notification.id);
-				}, notification.duration);
+				// Remove the notification after its duration if it's not a progress notification
+				if (!('isProgress' in notification) || !notification.isProgress) {
+					setTimeout(() => {
+						notifications = notifications.filter((n) => n.id !== notification.id);
+					}, notification.duration);
+				}
 			}
 		} finally {
 			isProcessingBuffer = false;
@@ -46,12 +64,8 @@
 	}
 
 	// Global function to show notifications
-	function showNotification(
-		message: string,
-		type: 'info' | 'success' | 'warning' | 'error' = 'info',
-		duration = 5000
-	) {
-		const notification = {
+	function showNotification(message: string, type: NotificationType = 'info', duration = 5000) {
+		const notification: StandardNotificationData = {
 			id: Math.random().toString(36).substring(2),
 			message,
 			type,
@@ -62,13 +76,70 @@
 		processNotificationBuffer();
 	}
 
+	// Function to create progress notifications
+	function createProgressNotification(message: string): ProgressNotification {
+		const id = Math.random().toString(36).substring(2);
+		const notification: ProgressNotificationData = {
+			id,
+			message,
+			isProgress: true,
+			progress: 0,
+			state: 'active'
+		};
+
+		notificationBuffer = [...notificationBuffer, notification];
+		processNotificationBuffer();
+
+		return {
+			id,
+			message,
+			progress: 0,
+			updateProgress: (progress: number) => {
+				notifications = notifications.map((n) => {
+					if (n.id === id && 'isProgress' in n && n.isProgress) {
+						return { ...n, progress: Math.min(100, Math.max(0, progress)) };
+					}
+					return n;
+				});
+			},
+			finish: (type?: 'success' | 'error') => {
+				if (!type) {
+					notifications = notifications.filter((n) => n.id !== id);
+					return;
+				}
+
+				notifications = notifications.map((n) => {
+					if (n.id === id && 'isProgress' in n && n.isProgress) {
+						return {
+							...n,
+							state: type,
+							progress: 100
+						};
+					}
+					return n;
+				});
+
+				// Remove after a short delay to show the success/error state
+				setTimeout(() => {
+					notifications = notifications.filter((n) => n.id !== id);
+				}, 1000);
+			}
+		};
+	}
+
 	// Initialize the notification system
 	$effect(() => {
-		initializeNotifications(showNotification);
+		initializeNotifications(showNotification, createProgressNotification);
 	});
 
-	function getTypeStyles(type: NotificationData['type']) {
-		switch (type) {
+	function getTypeStyles(notification: NotificationData) {
+		if ('isProgress' in notification && notification.isProgress) {
+			if (notification.state === 'success') return 'border-green-500 from-green-500/20';
+			if (notification.state === 'error') return 'border-red-500 from-red-500/20';
+			return 'border-blue-500 from-blue-500/20';
+		}
+
+		switch (notification.type) {
 			case 'success':
 				return 'border-green-500 from-green-500/20';
 			case 'warning':
@@ -89,10 +160,20 @@
 		>
 			<div
 				class="relative border bg-gradient-to-r from-black to-black/80 text-white backdrop-blur-sm
-                     {getTypeStyles(notification.type)}"
+                     {getTypeStyles(notification)}"
 			>
 				<!-- Scanlines effect -->
 				<div class="scanlines pointer-events-none absolute inset-0" />
+
+				<!-- Progress bar for progress notifications -->
+				{#if 'isProgress' in notification && notification.isProgress}
+					<div class="absolute bottom-0 left-0 h-0.5 w-full bg-black/20">
+						<div
+							class="h-full bg-current transition-all duration-300"
+							style="width: {notification.progress}%"
+						/>
+					</div>
+				{/if}
 
 				<!-- Glitch effect container -->
 				<div class="relative px-2 py-1.5">
