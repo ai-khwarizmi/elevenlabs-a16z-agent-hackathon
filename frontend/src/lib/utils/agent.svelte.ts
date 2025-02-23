@@ -269,11 +269,11 @@ export class Agent {
 			onModeChange: ({ mode }) => {
 				console.log(`[${this.name}] Mode changed to:`, mode);
 				if (mode === 'listening') {
-					if (this.autoEndConversation) {
-						console.log(`[${this.name}] Ending conversation due to auto-end flag`);
-						this.conversation?.endSession();
-						this.autoEndConversation = false;
-					}
+					// if (this.autoEndConversation) {
+					// 	console.log(`[${this.name}] Ending conversation due to auto-end flag`);
+					// 	this.conversation?.endSession();
+					// 	this.autoEndConversation = false;
+					// }
 					this.isSpeaking = false;
 				} else if (mode === 'speaking') {
 					this.isSpeaking = true;
