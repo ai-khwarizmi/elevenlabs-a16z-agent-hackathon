@@ -268,6 +268,9 @@ export const todoListTool = new Tool(
 					'info'
 				);
 
+				// Update todos
+				await agent.setTodos(todos);
+
 				return {
 					success: true,
 					message: 'Todo added successfully',
@@ -300,6 +303,9 @@ export const todoListTool = new Tool(
 				// Save to file
 				const content = todos.map((todo) => formatTodoAsMarkdown(todo)).join('\n');
 				await filesystem.writeFile(todoFilePath, content);
+
+				// Update todos
+				await agent.setTodos(todos);
 
 				return {
 					success: true,
@@ -359,6 +365,9 @@ export const todoListTool = new Tool(
 					`${agent.getName()} changed task priority: "${todos[todoIndex].title}" ${priorityText[oldPriority]} → ${priorityText[priority]}`,
 					'info'
 				);
+
+				// Update todos
+				await agent.setTodos(todos);
 
 				return {
 					success: true,

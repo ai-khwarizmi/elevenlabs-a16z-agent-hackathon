@@ -111,7 +111,9 @@ export class Agent {
 	private toolIds: string[];
 	private messageLog = $state<TimestampedMessage[]>([]);
 	private profilePicture = $state<string | null>(null);
+
 	private todos = $state<Todo[]>([]);
+
 	private elevenLabsVoiceId = $state<string | null>(null);
 	private elevenLabsAgentId = $state<string | null>(null);
 	private state = $state<AgentState>('IDLE');
@@ -679,80 +681,12 @@ ${JSON.stringify(this.messageLog)}
 		}
 	}
 
-	/**
-	 * Get the agent's todos
-	 */
 	async getTodos(): Promise<Todo[]> {
-		const hasTodoTool = this.getTools().some(
-			(tool) => tool.getDefinition().function.name === 'manage_todos'
-		);
-		if (!hasTodoTool) {
-			return [];
-		}
-
-		const todoTool = getTool('manage_todos');
-		if (!todoTool) {
-			return [];
-		}
-		const result = (await this.executeTool('manage_todos', { action: 'list' })) as TodoToolResult;
-		if (result.success && result.todos) {
-			this.todos = result.todos;
-			return result.todos;
-		}
-		return [];
+		return this.todos;
 	}
 
-	/**
-	 * Add a todo to the agent's todos
-	 */
-	async addTodo(todo: {
-		title: string;
-		description: string;
-		priority: 'high' | 'medium' | 'low';
-		requestedBy?: string;
-	}): Promise<void> {
-		const result = (await this.executeTool('manage_todos', {
-			action: 'add',
-			...todo,
-			requestedBy: todo.requestedBy || this.name
-		})) as TodoToolResult;
-		if (result.success) {
-			await this.getTodos(); // Refresh todos
-		}
-	}
-
-	/**
-	 * Complete a todo
-	 */
-	async completeTodo(todoId: string): Promise<Todo | null> {
-		const result = (await this.executeTool('manage_todos', {
-			action: 'complete',
-			todoId
-		})) as TodoToolResult;
-		if (result.success && result.todo) {
-			await this.getTodos(); // Refresh todos
-			return result.todo;
-		}
-		return null;
-	}
-
-	/**
-	 * Update a todo's priority
-	 */
-	async updateTodoPriority(
-		todoId: string,
-		priority: 'high' | 'medium' | 'low'
-	): Promise<Todo | null> {
-		const result = (await this.executeTool('manage_todos', {
-			action: 'update_priority',
-			todoId,
-			priority
-		})) as TodoToolResult;
-		if (result.success && result.todo) {
-			await this.getTodos(); // Refresh todos
-			return result.todo;
-		}
-		return null;
+	public async setTodos(todos: Todo[]): Promise<void> {
+		this.todos = todos;
 	}
 
 	/**
