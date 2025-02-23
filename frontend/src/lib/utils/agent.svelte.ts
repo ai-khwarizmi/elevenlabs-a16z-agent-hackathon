@@ -108,6 +108,7 @@ export class Agent {
 	private openai: OpenAI | null = null;
 	private systemPrompt = $state<string>('');
 	private conversation: Conversation | null = null;
+	private autoEndConversation = $state<boolean>(false);
 
 	private activeStartTimestamp = $state<number | null>(null);
 	private lastConsiderRaisingHandTimestamp = $state<number | null>(null);
@@ -199,9 +200,11 @@ export class Agent {
 			tools: this.getTools(),
 			firstMessage: this.pendingHandRaisingText || undefined
 		});
+
 		if (this.pendingHandRaisingText) {
 			this.pendingHandRaisingText = null;
 		}
+
 		console.log(`[${this.name}] Agent tools updated successfully`);
 
 		const clientTools: Record<string, (args: Record<string, unknown>) => Promise<string>> = {};
@@ -219,8 +222,24 @@ export class Agent {
 		console.log(`[${this.name}] Starting conversation session`);
 		this.conversation = await Conversation.startSession({
 			agentId: this.elevenLabsAgentId,
-			onModeChange: (mode) => {
+			onModeChange: ({ mode }) => {
 				console.log(`[${this.name}] Mode changed to:`, mode);
+				if (mode === 'listening') {
+					if (this.autoEndConversation) {
+						console.log(`[${this.name}] Ending conversation due to auto-end flag`);
+						this.conversation?.endSession();
+					}
+				} else if (mode === 'speaking') {
+					agents.list.forEach((agent) => {
+						if (agent.getState() !== 'VOICE_ACTIVE') {
+							agent.leaveConversation(true);
+							agent.makeIdle();
+						}
+					});
+				}
+			},
+			onDebug: (props) => {
+				console.log(`[${this.name}] Debug event:`, props);
 			},
 			onMessage: (message) => {
 				console.log(`[${this.name}] Received message:`, message);
@@ -242,7 +261,7 @@ export class Agent {
 				console.warn(`[${this.name}] Unhandled tool call:`, toolCall);
 			},
 			onStatusChange: (status) => {
-				console.log(`[${this.name}] Status changed to:`, status);
+				console.log(`[${this.name}] Status changed to:`, status.status);
 			},
 			onError: (error) => {
 				console.error(`[${this.name}] Conversation error:`, error);
@@ -277,19 +296,25 @@ export class Agent {
 				this.makeVoiceActive();
 			}
 		} else {
+			this.leaveConversation(true);
 			if (this.state === 'VOICE_ACTIVE') {
 				this.makeAgentActive();
 			}
 		}
 	}
 
-	private async leaveConversation(): Promise<void> {
+	private async leaveConversation(force = false): Promise<void> {
 		console.log(`${this.name} leaving conversation`);
 		if (this.conversation) {
-			await this.conversation.endSession().catch((error) => {
-				console.error('Error ending conversation: ', error);
-			});
-			console.log(`${this.name} conversation ended`);
+			if (force) {
+				await this.conversation.endSession().catch((error) => {
+					console.error('Error ending conversation: ', error);
+				});
+				console.log(`${this.name} conversation ended`);
+			} else {
+				this.autoEndConversation = true;
+				console.log(`${this.name} will end conversation after current message`);
+			}
 		} else {
 			console.log(`${this.name} no conversation to leave`);
 		}
