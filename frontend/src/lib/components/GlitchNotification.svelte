@@ -116,19 +116,20 @@
 					return;
 				}
 
-				updateState((notifications) =>
-					notifications.map((n) => {
-						if (n.id === id && 'isProgress' in n && n.isProgress) {
-							return {
-								...n,
-								state: type,
-								progress: 100,
-								removeAfter: Date.now() + 1000
-							};
-						}
-						return n;
-					})
-				);
+				const updateNotification = (n: NotificationData): NotificationData => {
+					if (n.id === id && 'isProgress' in n && n.isProgress) {
+						return {
+							...n,
+							state: type,
+							progress: 100,
+							removeAfter: Date.now() + 1000
+						};
+					}
+					return n;
+				};
+
+				updateState((notifications) => notifications.map(updateNotification));
+				notificationBuffer = notificationBuffer.map(updateNotification);
 			}
 		};
 	}
