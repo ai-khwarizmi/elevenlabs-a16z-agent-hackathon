@@ -2,6 +2,7 @@
 	import { filesystem } from '$lib/stores/filesystem.svelte';
 	import { onMount } from 'svelte';
 	import { marked } from 'marked';
+	import TextScramble from './TextScramble.svelte';
 
 	// State
 	let isExpanded = $state(true);
@@ -12,9 +13,27 @@
 	let isLoading = $state(false);
 	let hasFiles = $state(false);
 	let fileStats = $state<Record<string, boolean>>({});
+	let isDragging = $state(false);
+	let isResizing = $state(false);
+	let width = $state(800);
+	let height = $state(256); // 64 * 4 (original height)
+	let position = $state({ x: 8, y: 0 }); // Will be set properly in onMount
+	let defaultPosition = { x: 8, y: 0 }; // Will be set properly in onMount
 
 	// Track filesystem changes
 	let lastUpdate = $derived(filesystem.lastUpdate);
+
+	// Resize state
+	let resizeHandles = $state([
+		{ id: 'e', cursor: 'e-resize', edge: 'right' },
+		{ id: 'w', cursor: 'w-resize', edge: 'left' },
+		{ id: 'n', cursor: 'n-resize', edge: 'top' },
+		{ id: 's', cursor: 's-resize', edge: 'bottom' },
+		{ id: 'ne', cursor: 'ne-resize', edge: 'ne' },
+		{ id: 'nw', cursor: 'nw-resize', edge: 'nw' },
+		{ id: 'se', cursor: 'se-resize', edge: 'se' },
+		{ id: 'sw', cursor: 'sw-resize', edge: 'sw' }
+	]);
 
 	// Helper function to check if a file is markdown
 	function isMarkdownFile(filename: string): boolean {
@@ -125,56 +144,56 @@
 								? `
 						/* Word-like document styles for markdown */
 						.markdown-body {
-							max-width: 7in;
+							max-width: 7.5in;
 							margin: 0 auto;
-							padding: 0.75in 0.6in;
-							background: white;
-							color: #222;
-							font-family: 'Calibri', system-ui, -apple-system, sans-serif;
+							padding: 0.25in 0.3in;
+							background: #000000;
+							color: #e0e0e0;
+							font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
 							line-height: 1.5;
-							font-size: 11pt;
-							box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+							font-size: 10.5pt;
+							box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
 						}
 						
 						/* Headings */
 						h1, h2, h3, h4, h5, h6 {
-							font-family: 'Calibri', system-ui, -apple-system, sans-serif;
-							color: #222;
+							font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
+							color: #ffffff;
 							margin-top: 1.2em;
 							margin-bottom: 0.5em;
 							font-weight: 600;
 							line-height: 1.2;
 						}
 						
-						h1 { font-size: 16pt; }
-						h2 { font-size: 14pt; }
+						h1 { font-size: 14pt; }
+						h2 { font-size: 13pt; }
 						h3 { font-size: 12pt; }
-						h4, h5, h6 { font-size: 11pt; }
+						h4, h5, h6 { font-size: 10.5pt; }
 						
 						/* Links */
 						a {
-							color: #222;
+							color: #e0e0e0;
 							text-decoration: underline;
 						}
 						a:hover {
-							color: #666;
+							color: #ffffff;
 						}
 						
 						/* Code blocks */
 						code {
-							font-family: 'Consolas', monospace;
-							background: #f5f5f5;
+							font-family: inherit;
+							background: #111111;
 							padding: 0.2em 0.4em;
 							border-radius: 2px;
 							font-size: 10pt;
-							color: #222;
+							color: #e0e0e0;
 						}
 						
 						pre {
-							background: #f5f5f5;
+							background: #111111;
 							padding: 0.8em;
 							border-radius: 2px;
-							border: 1px solid #e0e0e0;
+							border: 1px solid #222;
 							overflow-x: auto;
 							margin: 1em 0;
 						}
@@ -187,11 +206,11 @@
 						
 						/* Blockquotes */
 						blockquote {
-							border-left: 3px solid #222;
+							border-left: 3px solid #e0e0e0;
 							margin: 1em 0;
 							padding: 0.5em 1em;
-							background: #f5f5f5;
-							color: #444;
+							background: #111111;
+							color: #bbb;
 						}
 						
 						/* Tables */
@@ -203,19 +222,19 @@
 						}
 						
 						th, td {
-							border: 1px solid #e0e0e0;
+							border: 1px solid #222;
 							padding: 6px 10px;
 							text-align: left;
 						}
 						
 						th {
-							background: #f5f5f5;
+							background: #111111;
 							font-weight: 600;
-							color: #222;
+							color: #ffffff;
 						}
 						
 						tr:nth-child(even) {
-							background: #fafafa;
+							background: #111111;
 						}
 						
 						/* Lists */
@@ -231,7 +250,7 @@
 						/* Horizontal rule */
 						hr {
 							border: none;
-							border-top: 1px solid #e0e0e0;
+							border-top: 1px solid #222;
 							margin: 1.2em 0;
 						}
 						
@@ -240,6 +259,7 @@
 							max-width: 100%;
 							height: auto;
 							margin: 1em 0;
+							opacity: 0.9;
 						}
 						
 						/* Paragraphs */
@@ -273,8 +293,132 @@
 		loadFiles(parentPath);
 	}
 
+	// Resize handling
+	function startResize(event: MouseEvent, handle: { edge: string }) {
+		event.preventDefault();
+		isResizing = true;
+		const startX = event.clientX;
+		const startY = event.clientY;
+		const startWidth = width;
+		const startHeight = height;
+		const startPosition = { ...position };
+
+		function onMouseMove(e: MouseEvent) {
+			const deltaX = e.clientX - startX;
+			const deltaY = e.clientY - startY;
+
+			switch (handle.edge) {
+				case 'right':
+					width = Math.max(400, startWidth + deltaX);
+					break;
+				case 'left':
+					const newWidth = Math.max(400, startWidth - deltaX);
+					width = newWidth;
+					position.x = Math.max(0, startPosition.x - (newWidth - startWidth));
+					break;
+				case 'top':
+					const newHeight = Math.max(200, startHeight - deltaY);
+					height = newHeight;
+					position.y = Math.max(0, startPosition.y - (newHeight - startHeight));
+					break;
+				case 'bottom':
+					height = Math.max(200, startHeight + deltaY);
+					break;
+				case 'ne':
+					width = Math.max(400, startWidth + deltaX);
+					const neHeight = Math.max(200, startHeight - deltaY);
+					height = neHeight;
+					position.y = Math.max(0, startPosition.y - (neHeight - startHeight));
+					break;
+				case 'nw':
+					const nwWidth = Math.max(400, startWidth - deltaX);
+					width = nwWidth;
+					position.x = Math.max(0, startPosition.x - (nwWidth - startWidth));
+					const nwHeight = Math.max(200, startHeight - deltaY);
+					height = nwHeight;
+					position.y = Math.max(0, startPosition.y - (nwHeight - startHeight));
+					break;
+				case 'se':
+					width = Math.max(400, startWidth + deltaX);
+					height = Math.max(200, startHeight + deltaY);
+					break;
+				case 'sw':
+					const swWidth = Math.max(400, startWidth - deltaX);
+					width = swWidth;
+					position.x = Math.max(0, startPosition.x - (swWidth - startWidth));
+					height = Math.max(200, startHeight + deltaY);
+					break;
+			}
+		}
+
+		function onMouseUp() {
+			isResizing = false;
+			window.removeEventListener('mousemove', onMouseMove);
+			window.removeEventListener('mouseup', onMouseUp);
+		}
+
+		window.addEventListener('mousemove', onMouseMove);
+		window.addEventListener('mouseup', onMouseUp);
+	}
+
+	// Drag handling
+	function startDrag(event: MouseEvent) {
+		if (event.target instanceof Element && event.target.closest('button')) return;
+
+		isDragging = true;
+		const startX = event.clientX - position.x;
+		const startY = event.clientY - position.y;
+
+		function onMouseMove(e: MouseEvent) {
+			position = {
+				x: Math.max(0, Math.min(window.innerWidth - width, e.clientX - startX)),
+				y: Math.max(0, Math.min(window.innerHeight - height, e.clientY - startY))
+			};
+		}
+
+		function onMouseUp() {
+			isDragging = false;
+			window.removeEventListener('mousemove', onMouseMove);
+			window.removeEventListener('mouseup', onMouseUp);
+		}
+
+		window.addEventListener('mousemove', onMouseMove);
+		window.addEventListener('mouseup', onMouseUp);
+	}
+
+	// Update default position when window is resized
+	function updateDefaultPosition() {
+		if (typeof window !== 'undefined') {
+			defaultPosition = { x: 8, y: window.innerHeight - height - 8 };
+			if (!isExpanded) {
+				position = defaultPosition;
+			}
+		}
+	}
+
+	// Handle window resize
+	$effect(() => {
+		window.addEventListener('resize', updateDefaultPosition);
+		return () => window.removeEventListener('resize', updateDefaultPosition);
+	});
+
+	// Reset position when minimized
+	$effect(() => {
+		if (!isExpanded) {
+			position = defaultPosition;
+		}
+	});
+
 	// Initialize
 	onMount(() => {
+		// Set initial position at the bottom left
+		position = { x: 8, y: window.innerHeight - height - 8 };
+		defaultPosition = { x: 8, y: window.innerHeight - height - 8 };
+
+		// Add window resize listener
+		window.addEventListener('resize', updateDefaultPosition);
+
+		// Initialize filesystem if needed
 		if (filesystem.initialized) {
 			checkHasFiles('/').then((result) => {
 				hasFiles = result;
@@ -283,26 +427,60 @@
 				}
 			});
 		}
+
+		// Cleanup
+		return () => {
+			window.removeEventListener('resize', updateDefaultPosition);
+		};
 	});
 </script>
 
+<svelte:window />
+
 {#if hasFiles}
 	<div
-		class="fixed bottom-2 left-2 z-50 flex h-64 border border-white text-white transition-transform duration-300"
+		class="fixed z-50 flex border border-white text-white transition-transform duration-300"
 		class:translate-y-0={isExpanded}
 		class:translate-y-68={!isExpanded}
+		style="
+			width: {width}px; 
+			height: {height}px; 
+			left: {position.x}px; 
+			top: {position.y}px;
+			{isDragging || isResizing ? 'user-select: none;' : ''}
+		"
 	>
+		<!-- Resize handles -->
+		{#each resizeHandles as handle (handle.id)}
+			<div
+				class="absolute opacity-0 transition-opacity hover:bg-[#FF6222] hover:opacity-100"
+				style="
+					{handle.edge.includes('w') ? 'left: -4px;' : ''}
+					{handle.edge.includes('e') ? 'right: -4px;' : ''}
+					{handle.edge.includes('n') ? 'top: -4px;' : ''}
+					{handle.edge.includes('s') ? 'bottom: -4px;' : ''}
+					{handle.edge.length === 2 ? 'width: 12px; height: 12px;' : 'width: 8px; height: 100%;'}
+					{handle.edge.length === 1 ? 'width: 100%; height: 8px;' : ''}
+					cursor: {handle.cursor};
+				"
+				onmousedown={(e) => startResize(e, handle)}
+			/>
+		{/each}
+
 		{#if !isExpanded}
 			<button
 				class="absolute -top-16 left-4 border border-white bg-black px-3 py-2 font-['Anonymous_Pro'] text-sm text-white transition-all duration-200 hover:border-[#FF6222]"
 				onclick={() => (isExpanded = true)}
 			>
-				Show Files
+				<TextScramble text="Show Files" duration={400} />
 			</button>
 		{/if}
-		<div class="flex h-full w-[800px] flex-col bg-black shadow-lg">
+		<div class="flex h-full w-full flex-col bg-black shadow-lg">
 			<!-- Header -->
-			<div class="flex items-center justify-between border-b border-white bg-black p-2">
+			<div
+				class="flex cursor-move items-center justify-between border-b border-white bg-black p-2"
+				onmousedown={startDrag}
+			>
 				<div class="flex items-center gap-2">
 					<button
 						class="rounded p-1 hover:bg-gray-800"
@@ -324,7 +502,9 @@
 							/>
 						</svg>
 					</button>
-					<span class="text-sm font-medium">{currentPath || '/'}</span>
+					<span class="text-sm font-medium">
+						<TextScramble text={currentPath || '/'} duration={400} />
+					</span>
 				</div>
 				<button
 					class="rounded p-1 hover:bg-gray-800"
@@ -436,7 +616,7 @@
 										{/if}
 									</div>
 									<span class="relative pl-1">
-										{file}
+										<TextScramble text={file} duration={400} />
 										{#if isDirectory}
 											<span class="ml-1 text-xs text-white">/</span>
 										{/if}
@@ -457,7 +637,7 @@
 						/>
 					{:else}
 						<div class="flex h-full items-center justify-center text-white">
-							Select a file to preview
+							<TextScramble text="Select a file to preview" duration={400} />
 						</div>
 					{/if}
 				</div>
@@ -465,3 +645,10 @@
 		</div>
 	</div>
 {/if}
+
+<style>
+	/* Prevent text selection while resizing */
+	:global(body.resizing) {
+		user-select: none;
+	}
+</style>
