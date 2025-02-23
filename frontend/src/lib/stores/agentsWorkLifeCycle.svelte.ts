@@ -248,11 +248,10 @@ async function agentDoDoing(agent: Agent) {
 				`
 			});
 		}
-		await new Promise((resolve) => setTimeout(resolve, 300));
 	}
 }
 
-const MIN_TIME_BETWEEN_WORK_CYCLES = 15 * 1000;
+const MIN_TIME_BETWEEN_WORK_CYCLES = 7.5 * 1000;
 
 export async function agentDoWork(agent: Agent) {
 	const lastWorkTimestamp = agent.lastWorkTimestamp;
