@@ -18,6 +18,7 @@ registerTool(sandboxTool);
 registerTool(filesystemTool);
 
 export const agentBaseTools: Tool[] = [
+	inviteTool,
 	todoListTool,
 	handOffMicTool,
 	searchTool,
