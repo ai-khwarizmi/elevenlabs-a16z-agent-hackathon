@@ -244,12 +244,7 @@ export class Agent {
 						this.autoEndConversation = false;
 					}
 				} else if (mode === 'speaking') {
-					agents.list.forEach((agent) => {
-						if (agent.getState() !== 'VOICE_ACTIVE') {
-							agent.leaveConversation(true);
-							agent.makeIdle();
-						}
-					});
+					//
 				}
 			},
 			onDebug: (props) => {
