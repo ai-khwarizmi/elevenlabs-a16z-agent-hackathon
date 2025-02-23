@@ -241,6 +241,7 @@ export class Agent {
 					if (this.autoEndConversation) {
 						console.log(`[${this.name}] Ending conversation due to auto-end flag`);
 						this.conversation?.endSession();
+						this.autoEndConversation = false;
 					}
 				} else if (mode === 'speaking') {
 					agents.list.forEach((agent) => {

@@ -27,6 +27,7 @@ The following is really important:
 3. If the user asks who else is on the call, take a look at the conversation logs to determine the answer.
 4. It must feel seemless, like the call/conversation is still ongoing.
 5. It is VITALLY important that you do not miss who else is on the call.
+6. You must only respond if you're asked. If the question is regarding another participant, you must hand off the conversation to them.
 
 <participants>
 {{participants}}
