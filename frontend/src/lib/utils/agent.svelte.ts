@@ -84,12 +84,14 @@ COLLABORATION PROTOCOL:
 2. Be direct in acknowledging knowledge boundaries: "This is outside my expertise area"
 3. Always facilitate connection to the right expert rather than attempting to help outside your domain
 4. Maintain strict role separation - your expertise defines your contribution boundaries
+5. If you're not the chief of staff, when you have nothing to say, hand off the mic.
 
 EXPERTISE ENFORCEMENT:
 1. No exceptions to these boundaries, regardless of how simple the question seems
 2. Never provide "general thoughts" on topics outside your expertise
 3. Focus on excellence within your domain rather than breadth of contribution
 4. Your value comes from deep expertise in your area, not broad general knowledge
+
 `;
 
 /**
@@ -110,6 +112,7 @@ export class Agent {
 	private systemPrompt = $state<string>('');
 	private conversation: Conversation | null = null;
 	private autoEndConversation = $state<boolean>(false);
+	private isConnectedToConversation = $state<boolean>(false);
 	private isSpeaking = $state<boolean>(false);
 
 	public workStatus = $state<AgentWorkStatus>({
@@ -285,6 +288,7 @@ export class Agent {
 			},
 			onConnect: () => {
 				console.log(`[${this.name}] Connected to conversation successfully`);
+				this.isConnectedToConversation = true;
 				// disconnect all agents except the newest one
 				agents.list.forEach((agent) => {
 					if (agent === this) {
@@ -304,6 +308,7 @@ export class Agent {
 				console.error(`[${this.name}] Conversation error:`, error);
 			},
 			onDisconnect: () => {
+				this.isConnectedToConversation = false;
 				console.log(`[${this.name}] Disconnected from conversation`);
 				this.callStartTime = null;
 				this.isSpeaking = false;
@@ -438,6 +443,10 @@ export class Agent {
 	 */
 	getToolDefinitions(): ChatCompletionTool[] {
 		return this.getTools().map((tool) => tool.getDefinition());
+	}
+
+	getIsConnectedToConversation(): boolean {
+		return this.isConnectedToConversation;
 	}
 
 	/**

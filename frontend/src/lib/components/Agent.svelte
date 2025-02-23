@@ -46,7 +46,6 @@
 		agent.isSpeakingNow() ? 'border-orange-500' : ''
 	)}
 >
-	{agent.getState()} :: {agent.isSpeakingNow()}
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
@@ -88,14 +87,26 @@
 			{/if}
 		</div>
 		<!-- State text -->
-		<span
-			class="text-center font-['Anonymous_Pro'] text-lg font-bold {agent.getState() ===
-				'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-				? 'text-[#FF6222]'
-				: 'text-white'}"
-		>
-			{agent.getState()}
-		</span>
+		{#if agent.getState() === 'VOICE_ACTIVE'}
+			{#if agent.getIsConnectedToConversation()}
+				<span class="text-center font-['Anonymous_Pro'] text-lg font-bold text-green-500">
+					Connected
+				</span>
+			{:else}
+				<span class="text-center font-['Anonymous_Pro'] text-lg font-bold text-red-500">
+					Connecting...
+				</span>
+			{/if}
+		{:else}
+			<span
+				class="text-center font-['Anonymous_Pro'] text-lg font-bold {agent.getState() ===
+					'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+					? 'text-[#FF6222]'
+					: 'text-white'}"
+			>
+				{agent.getState()}
+			</span>
+		{/if}
 	</div>
 </div>
 
