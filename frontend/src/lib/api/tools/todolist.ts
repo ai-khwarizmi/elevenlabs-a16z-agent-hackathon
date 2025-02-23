@@ -21,11 +21,25 @@ function formatTodoAsMarkdown(todo: {
 
 	const statusText = todo.status === 'completed' ? '[COMPLETED]' : '[PENDING]';
 
+	// Safely format the completedAt date
+	let completedAtText = '';
+	if (todo.completedAt) {
+		try {
+			// Ensure we have a valid date object
+			const date = new Date(todo.completedAt);
+			if (!isNaN(date.getTime())) {
+				completedAtText = `**Completed At:** ${date.toISOString()}`;
+			}
+		} catch (error) {
+			console.error('[TodoList] Error formatting completedAt date:', error);
+		}
+	}
+
 	return `## ${todo.title} ${priorityText[todo.priority]} ${statusText}
 
 **ID:** ${todo.id}
 **Requested By:** ${todo.requestedBy}
-${todo.completedAt ? `**Completed At:** ${todo.completedAt.toISOString()}` : ''}
+${completedAtText}
 
 ### Description
 ${todo.description}
@@ -67,6 +81,22 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 
 		if (titleMatch && idMatch && requestedByMatch) {
 			const [, title, priority, status] = titleMatch;
+
+			// Safely parse the completedAt date
+			let completedAt: Date | undefined = undefined;
+			if (completedAtMatch) {
+				try {
+					const date = new Date(completedAtMatch[1].trim());
+					if (!isNaN(date.getTime())) {
+						completedAt = date;
+					} else {
+						console.warn('[TodoList] Invalid completedAt date:', completedAtMatch[1]);
+					}
+				} catch (error) {
+					console.error('[TodoList] Error parsing completedAt date:', error);
+				}
+			}
+
 			const todo = {
 				id: idMatch[1].trim(),
 				title: title.trim(),
@@ -74,7 +104,7 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 				priority: priority.toLowerCase() as 'high' | 'medium' | 'low',
 				status: status.toLowerCase() as 'pending' | 'completed',
 				requestedBy: requestedByMatch[1].trim(),
-				completedAt: completedAtMatch ? new Date(completedAtMatch[1].trim()) : undefined
+				completedAt
 			};
 			console.log('[TodoList] Created todo item:', todo);
 			todos.push(todo);
