@@ -3,6 +3,7 @@ import type { Agent } from '../lib/utils/agent.svelte';
 import { createOpenAI } from '$lib/api/ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
 import type { TimestampedMessage } from '$lib/types/messages';
+import { agentDoWork } from './stores/agentsWorkLifeCycle.svelte';
 
 async function determineAndActivateNextAgent(
 	transcript: TimestampedMessage[],
@@ -85,6 +86,9 @@ async function mainLoop() {
 			const allIdle = agentList.every((agent: Agent) => agent.getState() === 'IDLE');
 
 			if (allIdle && agentList.length > 0) {
+				/*
+					IDLE AGENT LOGIC
+				*/
 				console.log('All agents are currently idle');
 
 				// Get the global transcript and determine next agent
@@ -98,7 +102,9 @@ async function mainLoop() {
 				if (!activeAgent) {
 					console.log('No active agent found');
 				} else {
-					// handle hand-raising
+					/*
+						HAND RAISING LOGIC
+					*/
 					console.log('need to figure out if any agents need to raise their hand');
 					const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
 					if (activeStartTimestamp) {
@@ -110,8 +116,13 @@ async function mainLoop() {
 							if (urgency && urgency > 7) {
 								console.log('agent ', agent.getName(), ' raised hand with urgency ', urgency);
 								// kill the active agent, and make the new agent active
+								// wait 4 seconds, then make them active
+								await new Promise((resolve) => setTimeout(resolve, 4000));
 								activeAgent.makeIdle();
 								agent.makeActive();
+							} else if (urgency === null) {
+								//agent doesnt want to raise their hand, lets see if they want to do work
+								await agentDoWork(agent);
 							}
 						}
 					} else {

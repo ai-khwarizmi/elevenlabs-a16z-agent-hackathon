@@ -21,6 +21,7 @@ import { agents, type AgentMode } from '$lib/stores/agents.svelte';
 import { getGlobalChatlog, normalizeAgentName, addAiJoinEvent } from '$lib/stores/chatlog.svelte';
 import { Conversation } from '@11labs/client';
 import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
+import type { AgentWorkStatus } from '$lib/stores/agentsWorkLifeCycle.svelte';
 
 // Interface for a todo item
 interface Todo {
@@ -114,15 +115,29 @@ export class Agent {
 	private isConnectedToConversation = $state<boolean>(false);
 	private isSpeaking = $state<boolean>(false);
 
+	public workStatus = $state<AgentWorkStatus>({
+		phase: 'PLANNING',
+		notes: []
+	});
+	public lastWorkTimestamp = $state<number>(0);
+
 	private activeStartTimestamp = $state<number | null>(null);
 	private lastConsiderRaisingHandTimestamp = $state<number | null>(null);
 	private pendingHandRaisingText = $state<string | null>(null);
 
-	constructor(name: string, personality: string, tools: Tool[], options?: { id?: string }) {
+	constructor(
+		name: string,
+		personality: string,
+		tools: Tool[],
+		options?: { id?: string; workStatus?: AgentWorkStatus }
+	) {
 		this.id = options?.id ?? uid();
 		this.name = name;
 		this.personality = personality;
 		this.toolIds = tools.map((tool) => tool.getId());
+		if (options?.workStatus) {
+			this.workStatus = options.workStatus;
+		}
 		this.systemPrompt = `
 				<role>
 					${personality}
@@ -469,7 +484,7 @@ export class Agent {
 	/**
 	 * Execute a tool by name with the given arguments
 	 */
-	private async executeTool(toolName: string, args: ToolArgs): Promise<ToolResult> {
+	public async executeTool(toolName: string, args: ToolArgs): Promise<ToolResult> {
 		const tool = this.getTools().find((t) => t.getDefinition().function.name === toolName);
 		if (!tool) {
 			throw new Error(`Tool "${toolName}" not found`);
@@ -776,7 +791,7 @@ ${JSON.stringify(this.messageLog)}
 	/**
 	 * Get the OpenAI client, creating it if necessary
 	 */
-	private getOpenAI(): OpenAI {
+	public getOpenAI(): OpenAI {
 		if (!this.openai) {
 			const { openaiKey } = getStoredKeys();
 			this.openai = createOpenAI(openaiKey);
