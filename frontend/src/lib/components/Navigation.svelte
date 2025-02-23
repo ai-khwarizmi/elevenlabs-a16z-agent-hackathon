@@ -43,6 +43,7 @@
 			API Keys
 		</button>
 
+    {#if currentSession}
 			<select
 				value={currentSession?.id}
 				onchange={handleSessionChange}
@@ -59,6 +60,7 @@
 			>
 				New Session
 			</button>
+    {/if}
 	</div>
 </nav>
 
