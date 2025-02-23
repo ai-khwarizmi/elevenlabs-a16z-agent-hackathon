@@ -77,6 +77,11 @@ export class Tool {
 	 * Execute the tool with the given arguments
 	 */
 	async execute(args: ToolArgs, agent: Agent): Promise<ToolResult> {
-		return await this.executeFunction(args, agent);
+		try {
+			return await this.executeFunction(args, agent);
+		} catch (error) {
+			console.error(`[Tool] Error executing ${this.definition.name}:`, error);
+			throw 'Error executing tool';
+		}
 	}
 }

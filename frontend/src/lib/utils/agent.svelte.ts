@@ -516,7 +516,9 @@ export class Agent {
 		}
 
 		try {
+			console.log(`!!!!!!!!!!!!!!!!!!!1 [Tool] ${toolName} executing with args:`, args);
 			const result = await tool.execute(args, this);
+			console.log(`!!!!!!!!!!!!!!!!!!!1 [Tool] ${toolName} executed successfully`);
 			notification?.finish('success');
 			return result;
 		} catch (error) {
