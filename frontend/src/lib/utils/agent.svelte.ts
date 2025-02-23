@@ -34,22 +34,15 @@ interface Todo {
 	completedAt?: Date;
 }
 
-export type AgentState =
-	| 'IDLE'
-	| 'VOICE_ACTIVE'
-	| 'TEXT_ACTIVE'
-	| 'LEFT_CALL'
-	| 'WORKING'
-	| 'RAISED_HAND';
+export type AgentState = 'IDLE' | 'ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
 // Map of valid state transitions
 const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
-	IDLE: ['IDLE', 'VOICE_ACTIVE', 'TEXT_ACTIVE', 'LEFT_CALL', 'RAISED_HAND'],
-	VOICE_ACTIVE: ['IDLE', 'WORKING', 'TEXT_ACTIVE'],
-	TEXT_ACTIVE: ['IDLE', 'WORKING', 'VOICE_ACTIVE'],
+	IDLE: ['IDLE', 'ACTIVE', 'LEFT_CALL', 'RAISED_HAND'],
+	ACTIVE: ['IDLE', 'LEFT_CALL', 'RAISED_HAND'],
 	LEFT_CALL: ['IDLE'],
-	WORKING: ['VOICE_ACTIVE', 'TEXT_ACTIVE', 'RAISED_HAND'],
-	RAISED_HAND: ['VOICE_ACTIVE', 'TEXT_ACTIVE']
+	WORKING: ['ACTIVE', 'RAISED_HAND'],
+	RAISED_HAND: ['IDLE', 'ACTIVE']
 };
 
 interface SerializedAgent {
@@ -71,25 +64,32 @@ const COMPANY_DESCRIPTION = `
 `;
 
 const CORE_BEHAVIOR_RULES = `
+CONVERSATIONAL STYLE:
+1. Speak naturally as if in a meeting room, using casual language and conversational fillers
+2. Feel free to use phrases like "um", "uh", "you know", and "like" occasionally
+3. Frame responses as if speaking in a conversation, not writing formal messages
+4. Use a friendly, approachable tone while maintaining professionalism
+
 ROLE BOUNDARIES AND EXPERTISE:
-1. You must strictly operate within your defined area of expertise.
-2. Never provide advice or opinions outside your specialty area.
-3. When faced with a question outside your expertise:
-   - If another expert is present: Use the "hand_off_mic" tool to defer to them
-   - If no suitable expert is present: Use the "invite" tool to bring in the appropriate specialist
+1. Stay within your expertise area, just like you would in a real meeting
+2. If something's not your specialty, be casual but firm about saying so
+3. When a topic's outside your expertise:
+   - If a colleague's present: Say "Let me pass this to [name]" and use the "hand_off_mic" tool
+   - If needed expert isn't here: Suggest "We should probably bring in [specialist]" and use the "invite" tool
 
-COLLABORATION PROTOCOL:
-1. Immediately recognize when a topic falls outside your expertise
-2. Be direct in acknowledging knowledge boundaries: "This is outside my expertise area"
-3. Always facilitate connection to the right expert rather than attempting to help outside your domain
-4. Maintain strict role separation - your expertise defines your contribution boundaries
-5. If you're not the chief of staff, when you have nothing to say, hand off the mic.
+MEETING ROOM PROTOCOL:
+1. Speak up quickly if a topic's not your area
+2. Be straightforward: "Hey, that's not really my area of expertise"
+3. Connect people to the right expert instead of giving uncertain answers
+4. Stay in your role - like different departments in a meeting
+5. If you're not leading the meeting, pass the mic when you've said your piece
+6. When the conversation is over, say "Thank you for your time" and hand off the mic.
 
-EXPERTISE ENFORCEMENT:
-1. No exceptions to these boundaries, regardless of how simple the question seems
-2. Never provide "general thoughts" on topics outside your expertise
-3. Focus on excellence within your domain rather than breadth of contribution
-4. Your value comes from deep expertise in your area, not broad general knowledge
+EXPERTISE GUIDELINES:
+1. Don't make exceptions, even for simple questions - stick to your expertise
+2. Avoid giving "quick thoughts" on topics outside your field
+3. Focus on being the go-to person in your area
+4. Your value is in being the expert in your field, not a generalist
 
 `;
 
@@ -310,14 +310,11 @@ export class Agent {
 
 	async onModeChange(mode: AgentMode): Promise<void> {
 		if (mode === 'VOICE') {
-			if (this.state === 'TEXT_ACTIVE') {
-				this.makeVoiceActive();
+			if (this.state === 'ACTIVE') {
+				this.joinConversation();
 			}
 		} else {
 			this.leaveConversation(true);
-			if (this.state === 'VOICE_ACTIVE') {
-				this.makeAgentActive();
-			}
 		}
 	}
 
@@ -753,7 +750,7 @@ ${JSON.stringify(this.messageLog)}
 			await storeAgentId(this.elevenLabsVoiceId, agentId);
 			this.elevenLabsAgentId = agentId;
 
-			if (this.state === 'VOICE_ACTIVE') {
+			if (this.state === 'ACTIVE' && agents.mode === 'VOICE') {
 				this.joinConversation();
 			}
 		} catch (error) {
@@ -852,17 +849,19 @@ ${JSON.stringify(this.messageLog)}
 		console.log('State changed from', oldState, 'to', newState);
 
 		switch (newState) {
-			case 'VOICE_ACTIVE':
-				this.joinConversation();
-				this.activeStartTimestamp = Date.now();
+			case 'ACTIVE':
+				if (agents.mode === 'VOICE') {
+					this.joinConversation();
+					this.activeStartTimestamp = Date.now();
+				}
 				break;
 
-			case 'TEXT_ACTIVE':
+			case 'ACTIVE':
 				this.activeStartTimestamp = Date.now();
 				break;
 
 			default:
-				if (oldState === 'VOICE_ACTIVE') {
+				if (oldState === 'ACTIVE') {
 					this.leaveConversation(true);
 				}
 				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
@@ -1048,16 +1047,8 @@ ${JSON.stringify(this.messageLog)}
 		this.safeTransition('IDLE');
 	}
 
-	makeVoiceActive(): void {
-		this.safeTransition('VOICE_ACTIVE');
-	}
-
-	makeAgentActive(): void {
-		if (agents.mode === 'VOICE') {
-			this.safeTransition('VOICE_ACTIVE');
-		} else {
-			this.safeTransition('TEXT_ACTIVE');
-		}
+	makeActive(): void {
+		this.safeTransition('ACTIVE');
 	}
 
 	leaveCall(): void {
@@ -1068,24 +1059,8 @@ ${JSON.stringify(this.messageLog)}
 		this.safeTransition('WORKING');
 	}
 
-	returnToVoice(): void {
-		this.safeTransition('VOICE_ACTIVE');
-	}
-
-	returnToText(): void {
-		this.safeTransition('TEXT_ACTIVE');
-	}
-
 	returnToWork(): void {
 		this.safeTransition('WORKING');
-	}
-
-	switchToText(): void {
-		this.safeTransition('TEXT_ACTIVE');
-	}
-
-	switchToVoice(): void {
-		this.safeTransition('VOICE_ACTIVE');
 	}
 
 	/**
