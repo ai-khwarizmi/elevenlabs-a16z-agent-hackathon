@@ -13,19 +13,19 @@ function formatTodoAsMarkdown(todo: {
 	requestedBy: string;
 	completedAt?: Date;
 }): string {
-	const priorityEmoji = {
-		high: '🔴',
-		medium: '🟡',
-		low: '🟢'
+	const priorityText = {
+		high: '[HIGH]',
+		medium: '[MEDIUM]',
+		low: '[LOW]'
 	};
 
-	return `## ${todo.title} ${priorityEmoji[todo.priority]}
-	
-**Status:** ${todo.status === 'completed' ? '✅ Completed' : '⏳ Pending'}
-**Priority:** ${todo.priority}
+	const statusText = todo.status === 'completed' ? '[COMPLETED]' : '[PENDING]';
+
+	return `## ${todo.title} ${priorityText[todo.priority]} ${statusText}
+
+**ID:** ${todo.id}
 **Requested By:** ${todo.requestedBy}
 ${todo.completedAt ? `**Completed At:** ${todo.completedAt.toISOString()}` : ''}
-**ID:** ${todo.id}
 
 ### Description
 ${todo.description}
@@ -44,32 +44,46 @@ function parseTodoFromMarkdown(markdown: string): Array<{
 	requestedBy: string;
 	completedAt?: Date;
 }> {
+	console.log('[TodoList] Parsing markdown content:', markdown.slice(0, 100) + '...');
 	const todos = [];
 	const sections = markdown.split('---').filter((section) => section.trim());
+	console.log('[TodoList] Found sections:', sections.length);
 
 	for (const section of sections) {
-		const titleMatch = section.match(/## (.*?) [🔴🟡🟢]/u);
-		const statusMatch = section.match(/\*\*Status:\*\* ([✅⏳] \w+)/u);
-		const priorityMatch = section.match(/\*\*Priority:\*\* (\w+)/);
+		console.log('[TodoList] Processing section:', section.slice(0, 100) + '...');
+		const titleMatch = section.match(/## (.*?) \[(HIGH|MEDIUM|LOW)\] \[(PENDING|COMPLETED)\]/);
+		const idMatch = section.match(/\*\*ID:\*\* (.*)/);
 		const requestedByMatch = section.match(/\*\*Requested By:\*\* (.*)/);
 		const completedAtMatch = section.match(/\*\*Completed At:\*\* (.*)/);
-		const idMatch = section.match(/\*\*ID:\*\* (.*)/);
 		const descriptionMatch = section.match(/### Description\n([\s\S]*?)(?=\n\*\*|$)/);
 
-		if (titleMatch && statusMatch && priorityMatch && requestedByMatch && idMatch) {
-			const status = statusMatch[1].includes('✅') ? ('completed' as const) : ('pending' as const);
-			todos.push({
+		console.log('[TodoList] Matches:', {
+			hasTitle: !!titleMatch,
+			hasId: !!idMatch,
+			hasRequestedBy: !!requestedByMatch,
+			hasCompletedAt: !!completedAtMatch,
+			hasDescription: !!descriptionMatch
+		});
+
+		if (titleMatch && idMatch && requestedByMatch) {
+			const [, title, priority, status] = titleMatch;
+			const todo = {
 				id: idMatch[1].trim(),
-				title: titleMatch[1].trim(),
+				title: title.trim(),
 				description: descriptionMatch ? descriptionMatch[1].trim() : '',
-				priority: priorityMatch[1].toLowerCase() as 'high' | 'medium' | 'low',
-				status,
+				priority: priority.toLowerCase() as 'high' | 'medium' | 'low',
+				status: status.toLowerCase() as 'pending' | 'completed',
 				requestedBy: requestedByMatch[1].trim(),
 				completedAt: completedAtMatch ? new Date(completedAtMatch[1].trim()) : undefined
-			});
+			};
+			console.log('[TodoList] Created todo item:', todo);
+			todos.push(todo);
+		} else {
+			console.warn('[TodoList] Skipping invalid section - missing required fields');
 		}
 	}
 
+	console.log('[TodoList] Parsed total todos:', todos.length);
 	return todos;
 }
 
@@ -120,7 +134,11 @@ export const todoListTool = new Tool(
 		}
 	},
 	(async (args: Record<string, unknown>, agent) => {
+		console.log('[TodoList] Tool called with args:', args);
+		console.log('[TodoList] Agent:', agent.getName());
+
 		if (typeof args !== 'object' || args === null) {
+			console.error('[TodoList] Invalid arguments provided');
 			return {
 				success: false,
 				message: 'Invalid arguments'
@@ -135,10 +153,12 @@ export const todoListTool = new Tool(
 		const requestedBy = args.requestedBy as string | undefined;
 
 		// Ensure /todos directory exists
+		console.log('[TodoList] Creating /todos directory if needed');
 		await filesystem.mkdirp('/todos');
 
 		// Get agent's todo file path
 		const todoFilePath = `/todos/${normalizeAgentName(agent.getName())}.md`;
+		console.log('[TodoList] Using todo file path:', todoFilePath);
 
 		// Load existing todos
 		let todos: Array<{
@@ -152,22 +172,42 @@ export const todoListTool = new Tool(
 		}> = [];
 
 		try {
+			console.log('[TodoList] Checking if todo file exists');
 			const exists = await filesystem.exists(todoFilePath);
+			console.log('[TodoList] File exists:', exists);
+
 			if (exists) {
+				console.log('[TodoList] Reading todo file');
 				const content = await filesystem.readFile(todoFilePath);
+				console.log('[TodoList] File content length:', content.length);
 				todos = parseTodoFromMarkdown(content);
+			} else {
+				console.log('[TodoList] No existing todo file found');
 			}
 		} catch (error) {
-			console.error('Error reading todos:', error);
+			console.error('[TodoList] Error reading todos:', error);
 		}
+
+		console.log('[TodoList] Loaded todos:', todos.length);
 
 		switch (action) {
 			case 'add': {
+				console.log('[TodoList] Adding new todo');
 				if (!title || !description || !priority || !requestedBy) {
+					console.error('[TodoList] Missing required fields for add');
 					return {
 						success: false,
 						message: 'Title, description, priority, and requestedBy are required for adding a todo'
 					};
+				}
+
+				// Check for number of pending todos
+				const pendingTodos = todos.filter((todo) => todo.status === 'pending');
+				if (pendingTodos.length >= 5) {
+					console.error('[TodoList] Too many pending todos');
+					throw new Error(
+						'Cannot add more todos. Please complete some existing todos first (maximum 5 pending todos allowed).'
+					);
 				}
 
 				const newTodo = {
@@ -178,17 +218,20 @@ export const todoListTool = new Tool(
 					status: 'pending' as const,
 					requestedBy
 				};
+				console.log('[TodoList] Created new todo:', newTodo);
 
 				todos.push(newTodo);
 
 				// Save to file
+				console.log('[TodoList] Saving updated todos to file');
 				const content = todos.map((todo) => formatTodoAsMarkdown(todo)).join('\n');
 				await filesystem.writeFile(todoFilePath, content);
+				console.log('[TodoList] File saved successfully');
 
 				// Show notification
-				const priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[priority];
+				const priorityText = { high: '[HIGH]', medium: '[MEDIUM]', low: '[LOW]' };
 				showNotification(
-					`${agent.getName()} added new ${priority} priority task: ${title} ${priorityEmoji}`,
+					`${agent.getName()} added new ${priority} priority task: ${title} ${priorityText[priority]}`,
 					'info'
 				);
 
@@ -278,10 +321,9 @@ export const todoListTool = new Tool(
 				await filesystem.writeFile(todoFilePath, content);
 
 				// Show notification for priority change
-				const oldEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[oldPriority];
-				const newEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[priority];
+				const priorityText = { high: '[HIGH]', medium: '[MEDIUM]', low: '[LOW]' };
 				showNotification(
-					`${agent.getName()} changed task priority: "${todos[todoIndex].title}" ${oldEmoji} → ${newEmoji}`,
+					`${agent.getName()} changed task priority: "${todos[todoIndex].title}" ${priorityText[oldPriority]} → ${priorityText[priority]}`,
 					'info'
 				);
 

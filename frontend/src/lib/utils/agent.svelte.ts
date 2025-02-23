@@ -22,6 +22,7 @@ import { getGlobalChatlog, normalizeAgentName, addAiJoinEvent } from '$lib/store
 import { Conversation } from '@11labs/client';
 import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
 import type { AgentWorkStatus } from '$lib/stores/agentsWorkLifeCycle.svelte';
+import { createProgressNotification } from '$lib/stores/notifications';
 
 // Interface for a todo item
 interface Todo {
@@ -500,7 +501,21 @@ export class Agent {
 		if (!tool) {
 			throw new Error(`Tool "${toolName}" not found`);
 		}
-		return await tool.execute(args, this);
+
+		// Only show notifications if the agent is in a voice conversation
+		let notification;
+		if (this.isConnectedToConversation) {
+			notification = createProgressNotification(`${this.getName()} is using ${toolName}...`);
+		}
+
+		try {
+			const result = await tool.execute(args, this);
+			notification?.finish('success');
+			return result;
+		} catch (error) {
+			notification?.finish('error');
+			throw error;
+		}
 	}
 
 	async createIntroMessage(): Promise<string> {

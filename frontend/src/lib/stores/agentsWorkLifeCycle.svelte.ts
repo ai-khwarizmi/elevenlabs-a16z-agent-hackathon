@@ -295,6 +295,13 @@ export async function agentDoWork(agent: Agent) {
 		return;
 	}
 
+	//if phase is planning, and the todo list has unfinished todos, then skip planning phase
+	const todos = agent.getTodos();
+	if (agent.workStatus.phase === 'PLANNING' && todos.some((todo) => todo.status === 'pending')) {
+		console.log('[AGENT-DO-WORK] Todo list has unfinished todos, skipping planning phase');
+		agent.workStatus.phase = 'DOING';
+	}
+
 	switch (agent.workStatus.phase) {
 		case 'PLANNING':
 			await agentDoPlanning(agent);
