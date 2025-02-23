@@ -103,25 +103,50 @@
 				<div class="flex w-full max-w-3xl flex-col items-center gap-12">
 					<div class="flex flex-col items-center gap-6 text-center">
 						<div>
-							<h1 class="text-4xl font-bold">Welcome to</h1>
 							<Logo size="large" />
 						</div>
 						<p class="max-w-xl text-lg text-gray-400">
-							Your multi-agent command center for strategic conversations and decision making.
+							Your AI roundtable of experts collaborating to solve complex challenges
 						</p>
 					</div>
 
 					{#if apiKeysNotSet}
-						<div
-							class="flex flex-col items-center gap-6 rounded-lg border border-gray-800 bg-gray-900/50 p-8"
-						>
-							<div class="flex flex-col items-center gap-2">
-								<h2 class="text-xl font-semibold">Get Started</h2>
-								<p class="text-sm text-gray-400">
-									Configure your API keys to begin your first session
-								</p>
+						<div class="flex flex-col items-center gap-6 rounded-lg border border-gray-800 bg-gray-900/50 p-8">
+							<div class="flex flex-col items-center gap-4">
+								<h2 class="text-xl font-semibold">How It Works</h2>
+								<div class="space-y-4 text-left">
+									<p class="text-gray-300">
+										🤝 Present your challenge or question, and our AI agents will collaborate to help you find the best solution.
+									</p>
+									<ul class="list-disc space-y-2 pl-5 text-gray-300">
+										<li>Each agent has unique expertise and specializations</li>
+										<li>The Chief of Staff will coordinate and bring in the most suitable agents for your needs</li>
+										<li>Agents can dynamically add other experts to the conversation</li>
+										<li>Get help with problem-solving, document creation, analysis, and more</li>
+									</ul>
+									
+									<div class="mt-4 rounded-lg border border-gray-700 bg-gray-800/30 p-4">
+										<h3 class="mb-2 font-semibold text-gray-200">Example Prompts:</h3>
+										<ul class="space-y-2 text-gray-300">
+											<li>🎯 "I need to organize a corporate retreat for 100 people next month. Budget is $50k, location needs to be within 2 hours of NYC, and team building is a priority. Please help me plan this."</li>
+											<li>📝 "I'm launching a sustainable fashion marketplace. Need a business proposal including market analysis, financial projections for 3 years, and go-to-market strategy."</li>
+											<li>🔍 "Here's our Q4 sales data showing a 15% decline in our midwest region. Please analyze potential causes and recommend solutions."</li>
+											<li>🎨 "We're launching a new plant-based protein drink targeting fitness enthusiasts aged 25-40. Budget is $100k. Need a full marketing strategy including social media, influencer partnerships, and launch event."</li>
+										</ul>
+										<p class="mt-4 text-sm text-gray-400">
+											💡 <strong>Pro tip:</strong> The more detailed information you provide upfront, the better the agents can assist you. Include relevant context like budgets, timelines, constraints, and specific goals.
+										</p>
+									</div>
+
+									<div class="mt-6 rounded-lg border border-yellow-600 bg-yellow-900/30 p-4">
+										<p class="text-yellow-200">
+											⚠️ <strong>Important:</strong> Running these AI agents involves significant OpenAI API usage. 
+											Please be aware that extended conversations can result in substantial API costs.
+										</p>
+									</div>
+								</div>
 							</div>
-							<AppButton text="Set API Keys" variant="primary" onClick={() => showApiKeysPopup()} />
+							<AppButton text="Continue to API Setup" variant="primary" onClick={() => showApiKeysPopup()} />
 						</div>
 					{:else}
 						<div
