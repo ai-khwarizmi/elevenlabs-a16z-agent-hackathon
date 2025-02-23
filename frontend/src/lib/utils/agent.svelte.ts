@@ -268,15 +268,15 @@ export class Agent {
 			agentId: this.elevenLabsAgentId,
 			onModeChange: ({ mode }) => {
 				console.log(`[${this.name}] Mode changed to:`, mode);
-				if (mode === 'listening') {
-					// if (this.autoEndConversation) {
-					// 	console.log(`[${this.name}] Ending conversation due to auto-end flag`);
-					// 	this.conversation?.endSession();
-					// 	this.autoEndConversation = false;
-					// }
-					this.isSpeaking = false;
-				} else if (mode === 'speaking') {
+				if (mode === 'speaking') {
 					this.isSpeaking = true;
+				} else {
+					if (this.autoEndConversation) {
+						console.log(`[${this.name}] Ending conversation due to auto-end flag`);
+						this.conversation?.endSession();
+						this.autoEndConversation = false;
+					}
+					this.isSpeaking = false;
 				}
 			},
 			onDebug: (props) => {
@@ -864,7 +864,7 @@ ${JSON.stringify(this.messageLog)}
 				}
 				break;
 			default:
-				// this.leaveConversation(false);
+				this.leaveConversation(false);
 
 				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
 				this.activeStartTimestamp = null;
