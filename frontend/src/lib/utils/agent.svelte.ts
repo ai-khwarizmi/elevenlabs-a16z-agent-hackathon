@@ -474,22 +474,26 @@ export class Agent {
 	async updateChatlogWithGlobalTranscript() {
 		const lastMessageTimestamp = (this.messageLog[this.messageLog.length - 1]?.timestamp ?? 0) + 1;
 
-		const globalTranscript = getGlobalChatlog(agents.list).filter(
-			(msg) => msg.timestamp > lastMessageTimestamp
-		);
+		try {
+			const globalTranscript = getGlobalChatlog(agents?.list ?? []).filter(
+				(msg) => msg.timestamp > lastMessageTimestamp
+			);
 
-		if (globalTranscript.length > 0) {
-			const devMessage: TimestampedMessage = {
-				id: generateUniqueId(),
-				role: 'developer',
-				content: `The following conversation happened since the last message: ${JSON.stringify(
-					globalTranscript
-				)}`,
-				timestamp: Date.now(),
-				name: 'SYSTEM'
-			};
+			if (globalTranscript.length > 0) {
+				const devMessage: TimestampedMessage = {
+					id: generateUniqueId(),
+					role: 'developer',
+					content: `The following conversation happened since the last message: ${JSON.stringify(
+						globalTranscript
+					)}`,
+					timestamp: Date.now(),
+					name: 'SYSTEM'
+				};
 
-			this.messageLog = [...this.messageLog, devMessage];
+				this.messageLog = [...this.messageLog, devMessage];
+			}
+		} catch (error) {
+			console.warn('Failed to update chatlog with global transcript:', error);
 		}
 	}
 
