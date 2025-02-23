@@ -1,8 +1,9 @@
 <script lang="ts">
-	import type { Agent, AgentState } from '$lib/utils/agent.svelte';
+	import type { Agent } from '$lib/utils/agent.svelte';
+	import { cn } from '$lib/utils/tw';
 	import TextScramble from './TextScramble.svelte';
 
-	const { agent } = $props<{ agent: Agent }>();
+	const { agent }: { agent: Agent } = $props();
 	let showPopup = $state(false);
 	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
@@ -35,15 +36,17 @@
 	onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 	role="button"
 	tabindex="0"
-	class="flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3 {agent.getState() ===
-		'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
-		? 'border-[#FF6222]'
-		: agent.getState() === 'IDLE'
-			? 'border-gray-500'
-			: agent.getState() === 'WORKING'
-				? 'border-white'
-				: 'border-gray-500'}"
+	class={cn(
+		'flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3',
+		agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+			? 'border-[#FF6222]'
+			: '',
+		agent.getState() === 'IDLE' ? 'border-gray-500' : '',
+		agent.getState() === 'WORKING' ? 'border-white' : 'border-gray-500',
+		agent.isSpeakingNow() ? 'border-orange-500' : ''
+	)}
 >
+	{agent.getState()} :: {agent.isSpeakingNow()}
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
@@ -66,7 +69,7 @@
 			{/if}
 			{#if agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'}
 				<div
-					class="absolute bottom-2 translate-x-1/2 right-1/2 flex aspect-square w-1/4 items-center justify-center rounded-full bg-white border border-[#FF6222]"
+					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border border-[#FF6222] bg-white"
 				>
 					{#if agent.getState() === 'VOICE_ACTIVE'}
 						<div class="audio-wave">

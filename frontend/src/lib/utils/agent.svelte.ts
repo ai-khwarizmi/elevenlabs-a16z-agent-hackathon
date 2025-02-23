@@ -109,6 +109,7 @@ export class Agent {
 	private systemPrompt = $state<string>('');
 	private conversation: Conversation | null = null;
 	private autoEndConversation = $state<boolean>(false);
+	private isSpeaking = $state<boolean>(false);
 
 	private activeStartTimestamp = $state<number | null>(null);
 	private lastConsiderRaisingHandTimestamp = $state<number | null>(null);
@@ -246,7 +247,9 @@ export class Agent {
 						this.conversation?.endSession();
 						this.autoEndConversation = false;
 					}
+					this.isSpeaking = false;
 				} else if (mode === 'speaking') {
+					this.isSpeaking = true;
 				}
 			},
 			onDebug: (props) => {
@@ -288,6 +291,7 @@ export class Agent {
 			onDisconnect: () => {
 				console.log(`[${this.name}] Disconnected from conversation`);
 				this.callStartTime = null;
+				this.isSpeaking = false;
 				this.safeTransition('IDLE');
 			},
 			clientTools: {
@@ -1073,5 +1077,12 @@ ${JSON.stringify(this.messageLog)}
 
 	switchToVoice(): void {
 		this.safeTransition('VOICE_ACTIVE');
+	}
+
+	/**
+	 * Get whether the agent is currently speaking
+	 */
+	isSpeakingNow(): boolean {
+		return this.isSpeaking;
 	}
 }
