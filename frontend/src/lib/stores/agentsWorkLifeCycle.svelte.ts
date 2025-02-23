@@ -1,6 +1,7 @@
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 import { addDeveloperEvent } from './chatlog.svelte';
+import { showNotification } from './notifications';
 
 type AgentWorkPhase = 'PLANNING' | 'DOING';
 
@@ -193,9 +194,9 @@ async function agentDoDoing(agent: Agent) {
 					todoCompleted = true;
 					console.log('[DOING-PHASE] Todo completed:', todo);
 					agent.completeTodo(todo.id);
-					addDeveloperEvent(
-						`${agent.getName()} has worked on the following and completed it: ${todo.title}`
-					);
+					const message = `${agent.getName()} has completed: ${todo.title}`;
+					addDeveloperEvent(message);
+					showNotification(message, 'success');
 					agent.workStatus.phase = 'PLANNING';
 				}
 			}
@@ -229,15 +230,11 @@ async function agentDoDoing(agent: Agent) {
 					}
 				]
 			});
-			if (summary.choices[0].message.content) {
-				addDeveloperEvent(
-					`${agent.getName()} has worked on the following but did not complete it: ${todo.title}. Summary: ${summary.choices[0].message.content}`
-				);
-			} else {
-				addDeveloperEvent(
-					`${agent.getName()} has worked on the following but did not complete it: ${todo.title}. Summary: No summary was provided`
-				);
-			}
+
+			const summaryText = summary.choices[0].message.content || 'No summary was provided';
+			const message = `${agent.getName()} could not complete: ${todo.title}. ${summaryText}`;
+			addDeveloperEvent(message);
+			showNotification(message, 'error');
 
 			break;
 		} else {

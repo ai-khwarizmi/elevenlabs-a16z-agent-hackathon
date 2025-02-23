@@ -1,6 +1,7 @@
 import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
 import { filesystem } from '$lib/stores/filesystem.svelte';
 import { normalizeAgentName } from '$lib/stores/chatlog.svelte';
+import { showNotification } from '$lib/stores/notifications';
 
 // Helper function to format todo as markdown
 function formatTodoAsMarkdown(todo: {
@@ -184,6 +185,13 @@ export const todoListTool = new Tool(
 				const content = todos.map((todo) => formatTodoAsMarkdown(todo)).join('\n');
 				await filesystem.writeFile(todoFilePath, content);
 
+				// Show notification
+				const priorityEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[priority];
+				showNotification(
+					`${agent.getName()} added new ${priority} priority task: ${title} ${priorityEmoji}`,
+					'info'
+				);
+
 				return {
 					success: true,
 					message: 'Todo added successfully',
@@ -259,6 +267,7 @@ export const todoListTool = new Tool(
 					};
 				}
 
+				const oldPriority = todos[todoIndex].priority;
 				todos[todoIndex] = {
 					...todos[todoIndex],
 					priority
@@ -267,6 +276,14 @@ export const todoListTool = new Tool(
 				// Save to file
 				const content = todos.map((todo) => formatTodoAsMarkdown(todo)).join('\n');
 				await filesystem.writeFile(todoFilePath, content);
+
+				// Show notification for priority change
+				const oldEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[oldPriority];
+				const newEmoji = { high: '🔴', medium: '🟡', low: '🟢' }[priority];
+				showNotification(
+					`${agent.getName()} changed task priority: "${todos[todoIndex].title}" ${oldEmoji} → ${newEmoji}`,
+					'info'
+				);
 
 				return {
 					success: true,

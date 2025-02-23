@@ -1,4 +1,5 @@
 import { generateUniqueId, type TimestampedMessage } from '$lib/types/messages';
+import { showNotification } from './notifications';
 
 // Global state for developer events
 let developerEvents = $state<TimestampedMessage[]>([]);
@@ -27,13 +28,17 @@ export function addAiJoinEvent(agent: { name: string; model?: string; personalit
 	const normalizedName = normalizeAgentName(agent.name);
 	const modelInfo = agent.model ? ` (${agent.model})` : '';
 	const backstory = agent.personality ? `\nBackstory: ${agent.personality}` : '';
-	addDeveloperEvent(`${normalizedName}${modelInfo} joined the conversation${backstory}`);
+	const message = `${normalizedName}${modelInfo} joined the conversation${backstory}`;
+	addDeveloperEvent(message);
+	showNotification(message, 'info');
 }
 
 export function addAiLeaveEvent(agent: { name: string; model?: string }) {
 	const normalizedName = normalizeAgentName(agent.name);
 	const modelInfo = agent.model ? ` (${agent.model})` : '';
-	addDeveloperEvent(`${normalizedName}${modelInfo} left the conversation`);
+	const message = `${normalizedName}${modelInfo} left the conversation`;
+	addDeveloperEvent(message);
+	showNotification(message, 'warning');
 }
 
 // Helper function to normalize agent names
