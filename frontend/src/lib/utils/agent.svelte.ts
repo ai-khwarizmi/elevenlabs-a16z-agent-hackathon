@@ -217,7 +217,20 @@ export class Agent {
 		}
 
 		console.log(`[${this.name}] Starting conversation session`);
+		const dynamicVariables = {
+			agent_name: this.name,
+			instructions: this.getSystemPrompt(),
+			conversation: JSON.stringify(this.messageLog),
+			participants: agents.list
+				.map(
+					(agent, index) =>
+						`${index + 1}. ${agent.getName()}${agent === this ? ' (this is you!)' : ''}`
+				)
+				.join('\n')
+		};
+		console.log(`!!!!!!![${this.name}] Dynamic variables:`, dynamicVariables);
 		this.conversation = await Conversation.startSession({
+			dynamicVariables,
 			agentId: this.elevenLabsAgentId,
 			onModeChange: (mode) => {
 				console.log(`[${this.name}] Mode changed to:`, mode);
@@ -253,16 +266,6 @@ export class Agent {
 				this.safeTransition('IDLE');
 			},
 			clientTools: {
-				get_persona: async () => {
-					console.log(`[${this.name}] Getting system prompt for elevenlabs`);
-					return `You are ${this.name} and your personality is: ${this.getPersonality()}
-					
-					<conversation_log>
-						Here is the conversation so far that you've been a part of:
-						${JSON.stringify(this.messageLog)}
-					</conversation_log>
-					`;
-				},
 				...clientTools
 			}
 		});
@@ -397,15 +400,9 @@ export class Agent {
 	async updateChatlogWithGlobalTranscript() {
 		const lastMessageTimestamp = (this.messageLog[this.messageLog.length - 1]?.timestamp ?? 0) + 1;
 
-		console.log('timestamp for last message', lastMessageTimestamp);
-		console.log(
-			`[${this.name}] Getting global transcript, before filtering`,
-			getGlobalChatlog(agents.list)
-		);
 		const globalTranscript = getGlobalChatlog(agents.list).filter(
 			(msg) => msg.timestamp > lastMessageTimestamp
 		);
-		console.log(`[${this.name}] Getting global transcript, after filtering`, globalTranscript);
 
 		if (globalTranscript.length > 0) {
 			const devMessage: TimestampedMessage = {
@@ -417,11 +414,8 @@ export class Agent {
 				timestamp: Date.now(),
 				name: 'SYSTEM'
 			};
-			console.log(`[${this.name}] Updating chatlog with global transcript`, devMessage);
 
 			this.messageLog = [...this.messageLog, devMessage];
-		} else {
-			console.log(`[${this.name}] No global transcript to update chatlog with`);
 		}
 	}
 
