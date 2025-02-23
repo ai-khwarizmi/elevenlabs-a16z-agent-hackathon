@@ -1,8 +1,8 @@
 <script lang="ts">
-  export let size: 'small' | 'large' = 'large';
+	import { PROJECT_NAME } from '$lib/constants';
+	export let size: 'small' | 'large' = 'large';
 </script>
 
-<div class={`font-mono ${size === 'small' ? 'text-2xl' : 'text-6xl'} flex gap-2 items-center`}>
-  <span class="text-white">Project</span>
-  <span class="text-[#FF6222]">WarRoom.</span>
+<div class={`font-mono ${size === 'small' ? 'text-2xl' : 'text-6xl'} flex items-center gap-2`}>
+	<span class="text-[#FF6222]">{PROJECT_NAME}.</span>
 </div>
