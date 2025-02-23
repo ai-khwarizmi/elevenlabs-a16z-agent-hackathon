@@ -675,6 +675,10 @@ export class Agent {
 			});
 			await storeAgentId(this.elevenLabsVoiceId, agentId);
 			this.elevenLabsAgentId = agentId;
+
+			if (this.state === 'VOICE_ACTIVE') {
+				this.joinConversation();
+			}
 		} catch (error) {
 			console.error('Failed to create ElevenLabs agent:', error);
 			this.elevenLabsAgentId = null;
