@@ -4,7 +4,7 @@
 	import AppButton from './AppButton.svelte';
 	import TextScramble from './TextScramble.svelte';
 
-	let { isExpanded = $bindable(true) } = $props();
+	let { isExpanded = $bindable(true), showButton = $bindable(true) } = $props();
 	let messages = $derived(agents.getGlobalChatlog());
 
 	function formatTime(timestamp: number): string {
@@ -20,7 +20,7 @@
 </script>
 
 <div
-	class="fixed top-16 right-0 z-50 flex h-screen flex-col transition-transform duration-300"
+	class="fixed top-18 right-0 z-50 flex h-screen flex-col transition-transform duration-300"
 	class:translate-x-0={isExpanded}
 	class:translate-x-96={!isExpanded}
 >
@@ -28,7 +28,7 @@
 	<div class="h-full w-96 bg-black text-white shadow-lg border-l border-white">
 
 		<!-- Footer with toggle button -->
-		 {#if !isExpanded}
+		 {#if !isExpanded && showButton}
 		<div class="relative">
 			<div class="absolute top-2 -left-50">
 				<AppButton 
