@@ -864,7 +864,7 @@ ${JSON.stringify(this.messageLog)}
 				}
 				break;
 			default:
-				this.leaveConversation(false);
+				// this.leaveConversation(false);
 
 				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
 				this.activeStartTimestamp = null;
