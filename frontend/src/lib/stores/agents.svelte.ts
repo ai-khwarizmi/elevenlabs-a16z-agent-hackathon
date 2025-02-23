@@ -140,7 +140,7 @@ export const sessions = {
 			createdAt: new Date().toISOString(),
 			lastModified: new Date().toISOString(),
 			agents: []
-		}
+		};
 
 		try {
 			// Add Chief of Staff agent to new sessions by default
@@ -159,7 +159,6 @@ export const sessions = {
 		saveSession(defaultSession);
 
 		return defaultSession;
-
 	},
 	createSession(name: string): Session {
 		// Clear developer events when creating a new session
@@ -237,7 +236,11 @@ export const agents = {
 		return sessions.current?.agents ?? [];
 	},
 	set list(value: Agent[]) {
+		console.log('setting list', value);
 		if (sessions.current) {
+			sessions.current.agents.forEach((agent) => {
+				agent.stopAgent();
+			});
 			sessions.current.agents = value;
 			sessions.current.lastModified = new Date().toISOString();
 			saveSession(sessions.current);

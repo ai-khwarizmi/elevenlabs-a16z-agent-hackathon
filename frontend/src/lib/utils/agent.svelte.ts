@@ -323,6 +323,15 @@ export class Agent {
 		console.log(`[${this.name}] Conversation session started successfully`);
 	}
 
+	stopAgent() {
+		this.safeTransition('IDLE');
+		this.conversation?.endSession();
+		this.isConnectedToConversation = false;
+		this.isSpeaking = false;
+		this.callStartTime = null;
+		this.pendingHandRaisingText = null;
+	}
+
 	async onModeChange(mode: AgentMode): Promise<void> {
 		if (mode === 'VOICE') {
 			if (this.state === 'ACTIVE') {

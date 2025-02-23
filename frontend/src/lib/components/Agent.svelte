@@ -77,7 +77,7 @@
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
-			<h2 class="text-xl font-bold text-white line-clamp-1">
+			<h2 class="line-clamp-1 text-xl font-bold text-white">
 				{agent.getName()}
 				{#if activeTodos.length > 0}
 					<span
@@ -103,23 +103,15 @@
 					<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
 				</div>
 			{/if}
-			{#if agent.getState() === 'ACTIVE'}
+			{#if agent.getState() === 'ACTIVE' && agents.mode === 'VOICE' && agent.getIsConnectedToConversation()}
 				<div
 					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border-2 border-[#FF6222] bg-white shadow-lg"
 				>
-					{#if agent.getState() === 'ACTIVE'}
-						<div class="audio-wave">
-							<div class="bar"></div>
-							<div class="bar"></div>
-							<div class="bar"></div>
-						</div>
-					{:else}
-						<div class="typing-dots">
-							<div class="dot"></div>
-							<div class="dot"></div>
-							<div class="dot"></div>
-						</div>
-					{/if}
+					<div class="audio-wave">
+						<div class="bar"></div>
+						<div class="bar"></div>
+						<div class="bar"></div>
+					</div>
 				</div>
 			{/if}
 		</div>
