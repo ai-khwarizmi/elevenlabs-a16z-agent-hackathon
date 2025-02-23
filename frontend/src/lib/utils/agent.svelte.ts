@@ -327,6 +327,8 @@ export class Agent {
 		if (mode === 'VOICE') {
 			if (this.state === 'ACTIVE') {
 				this.joinConversation();
+			} else {
+				this.leaveConversation(true);
 			}
 		} else {
 			this.leaveConversation(true);
@@ -871,9 +873,8 @@ ${JSON.stringify(this.messageLog)}
 				}
 				break;
 			default:
-				if (oldState === 'ACTIVE') {
-					this.leaveConversation(true);
-				}
+				this.leaveConversation(false);
+
 				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
 				this.activeStartTimestamp = null;
 		}
