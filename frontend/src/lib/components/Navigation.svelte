@@ -14,8 +14,10 @@
 	}
 
 	function handleCreateSession() {
-		const sessionNumber = sessionList.length + 1;
-		sessions.createSession(`Session ${sessionNumber}`);
+    if (sessions.list.length >= 1) {
+		  const sessionNumber = sessions.list.length + 1;
+		  sessions.createSession(`Session ${sessionNumber}`);
+    }
 	}
 </script>
 
@@ -41,7 +43,6 @@
 			API Keys
 		</button>
 
-		{#if sessionList.length > 1}
 			<select
 				value={currentSession?.id}
 				onchange={handleSessionChange}
@@ -58,7 +59,6 @@
 			>
 				New Session
 			</button>
-		{/if}
 	</div>
 </nav>
 
