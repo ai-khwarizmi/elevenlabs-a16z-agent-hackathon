@@ -81,10 +81,12 @@ export const createProgressNotification = (message: string): ProgressNotificatio
 
 	const originalFinish = notification.finish;
 	notification.finish = (type?: 'success' | 'error') => {
-		if (activeProgressNotifications[id]) {
-			delete activeProgressNotifications[id];
-			originalFinish(type);
+		if (!activeProgressNotifications[id]) {
+			console.warn('Attempted to finish an already completed or non-existent notification:', id);
+			return;
 		}
+		delete activeProgressNotifications[id];
+		originalFinish(type);
 	};
 
 	return notification;
