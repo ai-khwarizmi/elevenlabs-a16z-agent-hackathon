@@ -870,11 +870,6 @@ ${JSON.stringify(this.messageLog)}
 					this.activeStartTimestamp = Date.now();
 				}
 				break;
-
-			case 'ACTIVE':
-				this.activeStartTimestamp = Date.now();
-				break;
-
 			default:
 				if (oldState === 'ACTIVE') {
 					this.leaveConversation(true);
