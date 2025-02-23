@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import type { DialogField, DialogValues } from '$lib/stores/dialog.svelte';
+	import { filesystem } from '$lib/stores/filesystem.svelte';
 
 	type DialogProps = {
 		title: string;
@@ -67,23 +68,25 @@
 		if (!file || !field.file_upload_path) return;
 
 		try {
-			// Create a FormData object
-			const formData = new FormData();
-			formData.append('file', file);
-			formData.append('path', field.file_upload_path);
+			// Read the file as text or binary based on type
+			const content = await new Promise<string>((resolve, reject) => {
+				const reader = new FileReader();
+				reader.onload = () => resolve(reader.result as string);
+				reader.onerror = () => reject(reader.error);
 
-			// Upload the file
-			const response = await fetch('/api/upload', {
-				method: 'POST',
-				body: formData
+				if (file.type.startsWith('text/')) {
+					reader.readAsText(file);
+				} else {
+					reader.readAsDataURL(file);
+				}
 			});
 
-			if (!response.ok) {
-				throw new Error('Upload failed');
-			}
+			// Use the virtual filesystem to store the file
+			const filePath = `${field.file_upload_path}/${file.name}`;
+			await filesystem.writeFile(filePath, content);
 
-			const result = await response.json();
-			formValues[field.id] = result.path;
+			// Update form values with the file path
+			formValues[field.id] = filePath;
 		} catch (error) {
 			console.error('File upload failed:', error);
 			// TODO: Show error to user
@@ -92,7 +95,9 @@
 
 	function handleSubmit() {
 		// Validate required fields
-		const missingRequired = fields.filter((field) => field.required && !formValues[field.id]);
+		const missingRequired = fields.filter(
+			(field: DialogField) => field.required && !formValues[field.id]
+		);
 
 		if (missingRequired.length > 0) {
 			// TODO: Show validation errors to user
@@ -104,21 +109,21 @@
 </script>
 
 <div
-	class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+	class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
 	transition:fade={{ duration: 200 }}
 >
 	<div
-		class="w-full max-w-lg rounded-lg bg-white p-6 shadow-xl"
+		class="w-full max-w-lg rounded-lg border border-white/20 bg-black p-6 shadow-2xl"
 		role="dialog"
 		aria-modal="true"
 		aria-labelledby="dialog-title"
 	>
-		<div class="mb-6">
-			<h2 id="dialog-title" class="text-2xl font-semibold">{title}</h2>
+		<div class="mb-6 flex flex-col border-b border-white/10 pb-4">
+			<h2 id="dialog-title" class="text-2xl font-bold text-white">{title}</h2>
 			{#if description}
-				<p class="mt-2 text-gray-600">{description}</p>
+				<p class="mt-2 text-gray-400">{description}</p>
 			{/if}
-			<div class="mt-4 text-sm text-gray-500">
+			<div class="mt-4 text-sm text-[#FF6222]">
 				Time remaining: {timeLeft} seconds
 			</div>
 		</div>
@@ -126,10 +131,10 @@
 		<form class="space-y-4" on:submit|preventDefault={handleSubmit}>
 			{#each fields as field}
 				<div>
-					<label for={field.id} class="block text-sm font-medium text-gray-700">
+					<label for={field.id} class="block text-sm font-medium text-white">
 						{field.label}
 						{#if field.required}
-							<span class="text-red-500">*</span>
+							<span class="text-[#FF2222]">*</span>
 						{/if}
 					</label>
 
@@ -139,14 +144,14 @@
 							bind:value={formValues[field.id]}
 							placeholder={field.placeholder}
 							required={field.required}
-							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+							class="focus:ring-opacity-50 mt-1 block w-full rounded-md border border-white/20 bg-black/50 px-3 py-2 text-white placeholder-gray-400 shadow-sm focus:border-[#FF6222] focus:ring-[#FF6222]"
 						/>
 					{:else if field.type === 'select'}
 						<select
 							id={field.id}
 							bind:value={formValues[field.id]}
 							required={field.required}
-							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+							class="focus:ring-opacity-50 mt-1 block w-full rounded-md border border-white/20 bg-black/50 px-3 py-2 text-white shadow-sm focus:border-[#FF6222] focus:ring-[#FF6222]"
 						>
 							<option value="">Select an option</option>
 							{#each field.options || [] as option}
@@ -164,9 +169,9 @@
 										value={option.value}
 										bind:group={formValues[field.id]}
 										required={field.required}
-										class="h-4 w-4 border-gray-300 text-blue-600 focus:ring-blue-500"
+										class="focus:ring-opacity-50 h-4 w-4 border-white/20 bg-black/50 text-[#FF6222] focus:ring-[#FF6222]"
 									/>
-									<label for="{field.id}-{option.value}" class="ml-2 block text-sm text-gray-700">
+									<label for="{field.id}-{option.value}" class="ml-2 block text-sm text-white">
 										{option.label}
 									</label>
 								</div>
@@ -179,9 +184,9 @@
 								id={field.id}
 								bind:checked={formValues[field.id]}
 								required={field.required}
-								class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+								class="focus:ring-opacity-50 h-4 w-4 rounded border-white/20 bg-black/50 text-[#FF6222] focus:ring-[#FF6222]"
 							/>
-							<label for={field.id} class="ml-2 text-sm text-gray-700">
+							<label for={field.id} class="ml-2 text-sm text-white">
 								{field.label}
 							</label>
 						</div>
@@ -192,7 +197,7 @@
 							accept={field.accept}
 							required={field.required}
 							on:change={(e) => handleFileUpload(e, field)}
-							class="mt-1 block w-full text-sm text-gray-500 file:mr-4 file:rounded-full file:border-0 file:bg-blue-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100"
+							class="mt-1 block w-full text-sm text-white file:mr-4 file:rounded-full file:border-0 file:bg-[#FF6222] file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-[#e55820]"
 						/>
 					{:else}
 						<input
@@ -201,7 +206,7 @@
 							bind:value={formValues[field.id]}
 							placeholder={field.placeholder}
 							required={field.required}
-							class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+							class="focus:ring-opacity-50 mt-1 block w-full rounded-md border border-white/20 bg-black/50 px-3 py-2 text-white placeholder-gray-400 shadow-sm focus:border-[#FF6222] focus:ring-[#FF6222]"
 						/>
 					{/if}
 				</div>
@@ -211,13 +216,13 @@
 				<button
 					type="button"
 					on:click={onCancel}
-					class="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 shadow-sm hover:bg-gray-50 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+					class="rounded-md border border-white/20 bg-black px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-white/10 focus:ring-2 focus:ring-[#FF6222] focus:ring-offset-2 focus:outline-none"
 				>
 					{cancel_button_text}
 				</button>
 				<button
 					type="submit"
-					class="rounded-md bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-blue-700 focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none"
+					class="rounded-md bg-[#FF6222] px-4 py-2 text-sm font-medium text-white shadow-sm transition-all duration-200 hover:bg-[#e55820] focus:ring-2 focus:ring-[#FF6222] focus:ring-offset-2 focus:outline-none"
 				>
 					{submit_button_text}
 				</button>
