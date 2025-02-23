@@ -1,4 +1,7 @@
-import type { ChatCompletionTool } from 'openai/resources/chat/completions';
+import type {
+	ChatCompletionMessageParam,
+	ChatCompletionTool
+} from 'openai/resources/chat/completions';
 import OpenAI from 'openai';
 import { createOpenAI } from '../api/ai/openai.svelte';
 import { getStoredKeys } from '$lib/storage/keys';
@@ -41,12 +44,12 @@ export type AgentState =
 
 // Map of valid state transitions
 const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
-	IDLE: ['IDLE', 'VOICE_ACTIVE', 'TEXT_ACTIVE', 'LEFT_CALL'],
+	IDLE: ['IDLE', 'VOICE_ACTIVE', 'TEXT_ACTIVE', 'LEFT_CALL', 'RAISED_HAND'],
 	VOICE_ACTIVE: ['IDLE', 'WORKING', 'TEXT_ACTIVE'],
 	TEXT_ACTIVE: ['IDLE', 'WORKING', 'VOICE_ACTIVE'],
 	LEFT_CALL: ['IDLE'],
 	WORKING: ['VOICE_ACTIVE', 'TEXT_ACTIVE', 'RAISED_HAND'],
-	RAISED_HAND: ['WORKING']
+	RAISED_HAND: ['VOICE_ACTIVE', 'TEXT_ACTIVE']
 };
 
 interface SerializedAgent {
@@ -105,6 +108,11 @@ export class Agent {
 	private openai: OpenAI | null = null;
 	private systemPrompt = $state<string>('');
 	private conversation: Conversation | null = null;
+
+	private activeStartTimestamp = $state<number | null>(null);
+	private lastConsiderRaisingHandTimestamp = $state<number | null>(null);
+	private pendingHandRaisingAudioBuffer = $state<AudioBuffer | null>(null);
+	private pendingHandRaisingText = $state<string | null>(null);
 
 	constructor(
 		name: string,
@@ -737,19 +745,226 @@ export class Agent {
 		return this.state;
 	}
 
+	processPendingHandRaising(): void {
+		if (this.pendingHandRaisingAudioBuffer && this.pendingHandRaisingText) {
+			this.messageLog = [
+				...this.messageLog,
+				{
+					id: generateUniqueId(),
+					role: 'assistant',
+					content: this.pendingHandRaisingText,
+					timestamp: Date.now(),
+					name: this.name
+				}
+			];
+			if (agents.mode === 'VOICE') {
+				this.playPendingAudio();
+			}
+			this.pendingHandRaisingText = null;
+			this.pendingHandRaisingAudioBuffer = null;
+		}
+	}
+
 	onStateChange(oldState: AgentState, newState: AgentState): void {
 		console.log('State changed from', oldState, 'to', newState);
 
-		if (newState === 'VOICE_ACTIVE') {
-			this.joinConversation();
-		} else {
-			this.leaveConversation();
+		switch (newState) {
+			case 'VOICE_ACTIVE':
+				this.joinConversation();
+				this.activeStartTimestamp = Date.now();
+				this.processPendingHandRaising();
+				break;
+
+			case 'TEXT_ACTIVE':
+				this.activeStartTimestamp = Date.now();
+				this.processPendingHandRaising();
+				break;
+
+			default:
+				if (oldState === 'VOICE_ACTIVE') {
+					this.leaveConversation();
+				}
+				console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
+				this.activeStartTimestamp = null;
+		}
+	}
+
+	public getActiveStartTimestamp(): number | null {
+		return this.activeStartTimestamp;
+	}
+
+	/*
+	 When idle, an expert that is part of the call might decide to raise their hand to mention something.
+	*/
+	public async considerRaisingHand(): Promise<null | number> {
+		console.log('considering raising hand for ', this.name);
+		const MIN_WAIT_TIME_BETWEEN_CONVERSATIONS = 20000;
+		if (
+			!this.lastConsiderRaisingHandTimestamp ||
+			Date.now() - this.lastConsiderRaisingHandTimestamp > MIN_WAIT_TIME_BETWEEN_CONVERSATIONS
+		) {
+			this.lastConsiderRaisingHandTimestamp = Date.now();
+			await this.updateChatlogWithGlobalTranscript();
+
+			const systemPromptRaisingHand = `
+			You are the following expert: ${this.personality}.
+
+			You will be given a transcript of the conversation.
+			If you want to add something important to the conversation, you can raise your hand.
+			Please provide both the sentence you want to add, and the urgency (e.g. how soon you want to interrupt)
+			You can also choose to not raise your hand, in which case you'll be asked again 20 seconds later.
+
+			Use the raise_hand tool if you want to contribute to the conversation.
+			Use the stay_quiet tool if you don't have anything to contribute right now.
+			`;
+
+			// Add the message to the log
+			const messages: ChatCompletionMessageParam[] = [
+				{
+					role: 'system',
+					content: systemPromptRaisingHand
+				},
+				{
+					role: 'user',
+					content: JSON.stringify(this.messageLog)
+				}
+			];
+
+			// Get AI response with tools
+			const completion = await this.getOpenAI().chat.completions.create({
+				model: 'gpt-4o',
+				tools: [
+					{
+						type: 'function',
+						function: {
+							name: 'raise_hand',
+							description: 'Use this when you want to contribute to the conversation',
+							parameters: {
+								type: 'object',
+								properties: {
+									contribution: {
+										type: 'string',
+										description: 'What you want to say'
+									},
+									urgency: {
+										type: 'integer',
+										description: 'How urgent is your contribution (1-10)',
+										minimum: 1,
+										maximum: 10
+									}
+								},
+								required: ['contribution', 'urgency']
+							}
+						}
+					},
+					{
+						type: 'function',
+						function: {
+							name: 'stay_quiet',
+							description: 'Use this when you have nothing to contribute right now',
+							parameters: {
+								type: 'object',
+								properties: {},
+								required: []
+							}
+						}
+					}
+				],
+				tool_choice: 'required',
+				messages: messages
+			});
+
+			const response = completion.choices[0].message;
+			if (response.tool_calls && response.tool_calls.length > 0) {
+				const toolCall = response.tool_calls[0];
+				if (toolCall.function.name === 'raise_hand') {
+					const args = JSON.parse(toolCall.function.arguments);
+					if (args.urgency > 7) {
+						this.raiseHand(args.urgency, args.contribution);
+						return args.urgency;
+					}
+				} else {
+					console.log('agent ', this.name, ' decided to stay quiet');
+				}
+			} else {
+				console.log('agent ', this.name, ' decided to stay quiet');
+			}
+			console.log('response hand raising', response);
+		}
+		return null;
+	}
+
+	/**
+	 * Generate audio from text using the agent's voice
+	 */
+	private async generateAudio(text: string): Promise<ArrayBuffer> {
+		const { elevenLabsKey } = getStoredKeys();
+		if (!elevenLabsKey) {
+			throw new Error('No ElevenLabs API key found');
 		}
 
-		if (newState === 'TEXT_ACTIVE') {
-			// this.initiateTextChat();
-		} else {
-			console.log('agent changed to state ', newState, 'from', oldState, 'No action implemented');
+		if (!this.elevenLabsVoiceId) {
+			throw new Error('No voice ID found');
+		}
+
+		const response = await fetch(
+			`https://api.elevenlabs.io/v1/text-to-speech/${this.elevenLabsVoiceId}`,
+			{
+				method: 'POST',
+				headers: {
+					'xi-api-key': elevenLabsKey,
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify({
+					text,
+					model_id: 'eleven_multilingual_v2',
+					voice_settings: {
+						stability: 0.5,
+						similarity_boost: 0.75
+					}
+				})
+			}
+		);
+
+		if (!response.ok) {
+			throw new Error('Failed to generate audio');
+		}
+
+		return await response.arrayBuffer();
+	}
+
+	raiseHand(urgency: number, contribution: string): void {
+		console.log('raising hand for ', this.name, 'with contribution:', contribution);
+		this.safeTransition('RAISED_HAND');
+
+		// Generate and store audio
+		this.generateAudio(contribution)
+			.then((arrayBuffer) => {
+				// Create an audio context and decode the buffer
+				const audioContext = new AudioContext();
+				audioContext
+					.decodeAudioData(arrayBuffer, (buffer) => {
+						this.pendingHandRaisingAudioBuffer = buffer;
+					})
+					.catch((error) => {
+						console.error('Failed to decode audio data:', error);
+					});
+			})
+			.catch((error) => {
+				console.error('Failed to generate audio:', error);
+			});
+	}
+
+	/**
+	 * Play the pending audio buffer if it exists
+	 */
+	private playPendingAudio(): void {
+		if (this.pendingHandRaisingAudioBuffer) {
+			const audioContext = new AudioContext();
+			const source = audioContext.createBufferSource();
+			source.buffer = this.pendingHandRaisingAudioBuffer;
+			source.connect(audioContext.destination);
+			source.start(0);
 		}
 	}
 
@@ -800,10 +1015,6 @@ export class Agent {
 
 	startWorking(): void {
 		this.safeTransition('WORKING');
-	}
-
-	raiseHand(): void {
-		this.safeTransition('RAISED_HAND');
 	}
 
 	returnToVoice(): void {

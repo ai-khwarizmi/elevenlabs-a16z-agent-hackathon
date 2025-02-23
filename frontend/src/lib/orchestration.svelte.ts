@@ -92,6 +92,33 @@ async function mainLoop() {
 
 			//wait 10 seconds before checking again
 			await new Promise((resolve) => setTimeout(resolve, 10000));
+		} else {
+			const activeAgent = agentList.find(
+				(agent) => agent.getState() === 'VOICE_ACTIVE' || agent.getState() === 'TEXT_ACTIVE'
+			);
+			if (!activeAgent) {
+				console.log('No active agent found');
+			} else {
+				// handle hand-raising
+				console.log('need to figure out if any agents need to raise their hand');
+				const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
+				if (activeStartTimestamp) {
+					const timeSinceActive = Date.now() - activeStartTimestamp;
+					console.log('current agent has been active for ', timeSinceActive, 'ms');
+					const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
+					for (const agent of idleAgents) {
+						const urgency = await agent.considerRaisingHand();
+						if (urgency && urgency > 7) {
+							console.log('agent ', agent.getName(), ' raised hand with urgency ', urgency);
+							// kill the active agent, and make the new agent active
+							activeAgent.makeIdle();
+							agent.makeAgentActive();
+						}
+					}
+				} else {
+					console.log('current agent has not been active for long enough');
+				}
+			}
 		}
 
 		// Wait a bit before next check to avoid tight loop
