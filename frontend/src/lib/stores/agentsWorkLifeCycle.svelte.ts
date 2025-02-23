@@ -55,7 +55,7 @@ async function agentDoPlanning(agent: Agent) {
 		const aiResponse = await agent.getOpenAI().chat.completions.create({
 			model: 'gpt-4o',
 			messages: currentMessages,
-			tools: agent.getToolDefinitions(),
+			tools: agent.getToolDefinitions().filter((tool) => tool.function.name !== 'invite_agent'),
 			tool_choice: 'auto',
 			parallel_tool_calls: true
 		});
@@ -165,7 +165,7 @@ async function agentDoDoing(agent: Agent) {
 		const aiResponse = await agent.getOpenAI().chat.completions.create({
 			model: 'gpt-4o',
 			messages: currentMessages,
-			tools: agent.getToolDefinitions(),
+			tools: agent.getToolDefinitions().filter((tool) => tool.function.name !== 'invite_agent'),
 			tool_choice: 'auto',
 			parallel_tool_calls: true
 		});
