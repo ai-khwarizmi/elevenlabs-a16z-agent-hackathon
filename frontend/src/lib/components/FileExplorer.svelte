@@ -177,9 +177,9 @@
 								? `
 						/* Word-like document styles for markdown */
 						.markdown-body {
-							max-width: 7.5in;
+							max-width: 720px;
 							margin: 0 auto;
-							padding: 0.25in 0.3in;
+							padding: 8px 20px;
 							background: #000000;
 							color: #e0e0e0;
 							font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
@@ -192,8 +192,8 @@
 						h1, h2, h3, h4, h5, h6 {
 							font-family: 'Consolas', 'Monaco', 'Andale Mono', 'Ubuntu Mono', monospace;
 							color: #ffffff;
-							margin-top: 1.2em;
-							margin-bottom: 0.5em;
+							margin-top: 0.5em;
+							margin-bottom: 0.2em;
 							font-weight: 600;
 							line-height: 1.2;
 						}
@@ -272,12 +272,12 @@
 						
 						/* Lists */
 						ul, ol {
-							padding-left: 1.5em;
-							margin: 0.5em 0;
+							padding-left: 1.2em;
+							margin: 0.3em 0;
 						}
 						
 						li {
-							margin: 0.25em 0;
+							margin: 0.15em 0;
 						}
 						
 						/* Horizontal rule */
@@ -297,7 +297,7 @@
 						
 						/* Paragraphs */
 						p {
-							margin: 0.75em 0;
+							margin: 0.5em 0;
 						}
 						`
 								: ''
