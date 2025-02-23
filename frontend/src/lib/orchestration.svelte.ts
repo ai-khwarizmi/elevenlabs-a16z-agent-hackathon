@@ -125,8 +125,6 @@ async function mainLoop() {
 								await agentDoWork(agent);
 							}
 						}
-					} else {
-						console.log('current agent has not been active for long enough');
 					}
 				}
 			}

@@ -215,6 +215,7 @@ async function agentDoDoing(agent: Agent) {
 			});
 		}
 
+		console.log(`[DOING-PHASE] Iterations for agent ${agent.getName()}: ${iterations}`);
 		if (iterations >= maxIterations) {
 			console.log('[DOING-PHASE] Max iterations reached, stopping', currentMessages);
 			break;
@@ -226,6 +227,7 @@ async function agentDoDoing(agent: Agent) {
 				`
 			});
 		}
+		await new Promise((resolve) => setTimeout(resolve, 300));
 	}
 }
 
