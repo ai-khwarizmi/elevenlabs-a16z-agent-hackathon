@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { filesystem } from '$lib/stores/filesystem.svelte';
 	import { onMount } from 'svelte';
+	import { marked } from 'marked';
 
 	// State
 	let isExpanded = $state(true);
@@ -14,6 +15,11 @@
 
 	// Track filesystem changes
 	let lastUpdate = $derived(filesystem.lastUpdate);
+
+	// Helper function to check if a file is markdown
+	function isMarkdownFile(filename: string): boolean {
+		return /\.(md|markdown)$/i.test(filename);
+	}
 
 	// Helper function to join paths properly
 	function joinPaths(base: string, path: string): string {
@@ -103,8 +109,10 @@
 			const stats = await filesystem.stat(path);
 			if (stats.isFile()) {
 				const content = await filesystem.readFile(path);
-				// Wrap the content with HTML that includes dark theme styling
-				fileContent = `
+				const isMarkdown = isMarkdownFile(path);
+
+				// Base styles for both markdown and regular content
+				const baseStyles = `
 					<style>
 						body {
 							color: white;
@@ -112,8 +120,141 @@
 							font-family: system-ui, -apple-system, sans-serif;
 							margin: 1rem;
 						}
-					</style>
-					${content}`;
+						${
+							isMarkdown
+								? `
+						/* Word-like document styles for markdown */
+						.markdown-body {
+							max-width: 7in;
+							margin: 0 auto;
+							padding: 0.75in 0.6in;
+							background: white;
+							color: #222;
+							font-family: 'Calibri', system-ui, -apple-system, sans-serif;
+							line-height: 1.5;
+							font-size: 11pt;
+							box-shadow: 0 0 20px rgba(0, 0, 0, 0.1);
+						}
+						
+						/* Headings */
+						h1, h2, h3, h4, h5, h6 {
+							font-family: 'Calibri', system-ui, -apple-system, sans-serif;
+							color: #222;
+							margin-top: 1.2em;
+							margin-bottom: 0.5em;
+							font-weight: 600;
+							line-height: 1.2;
+						}
+						
+						h1 { font-size: 16pt; }
+						h2 { font-size: 14pt; }
+						h3 { font-size: 12pt; }
+						h4, h5, h6 { font-size: 11pt; }
+						
+						/* Links */
+						a {
+							color: #222;
+							text-decoration: underline;
+						}
+						a:hover {
+							color: #666;
+						}
+						
+						/* Code blocks */
+						code {
+							font-family: 'Consolas', monospace;
+							background: #f5f5f5;
+							padding: 0.2em 0.4em;
+							border-radius: 2px;
+							font-size: 10pt;
+							color: #222;
+						}
+						
+						pre {
+							background: #f5f5f5;
+							padding: 0.8em;
+							border-radius: 2px;
+							border: 1px solid #e0e0e0;
+							overflow-x: auto;
+							margin: 1em 0;
+						}
+						
+						pre code {
+							background: none;
+							padding: 0;
+							border: none;
+						}
+						
+						/* Blockquotes */
+						blockquote {
+							border-left: 3px solid #222;
+							margin: 1em 0;
+							padding: 0.5em 1em;
+							background: #f5f5f5;
+							color: #444;
+						}
+						
+						/* Tables */
+						table {
+							border-collapse: collapse;
+							width: 100%;
+							margin: 1em 0;
+							font-size: 10pt;
+						}
+						
+						th, td {
+							border: 1px solid #e0e0e0;
+							padding: 6px 10px;
+							text-align: left;
+						}
+						
+						th {
+							background: #f5f5f5;
+							font-weight: 600;
+							color: #222;
+						}
+						
+						tr:nth-child(even) {
+							background: #fafafa;
+						}
+						
+						/* Lists */
+						ul, ol {
+							padding-left: 1.5em;
+							margin: 0.5em 0;
+						}
+						
+						li {
+							margin: 0.25em 0;
+						}
+						
+						/* Horizontal rule */
+						hr {
+							border: none;
+							border-top: 1px solid #e0e0e0;
+							margin: 1.2em 0;
+						}
+						
+						/* Images */
+						img {
+							max-width: 100%;
+							height: auto;
+							margin: 1em 0;
+						}
+						
+						/* Paragraphs */
+						p {
+							margin: 0.75em 0;
+						}
+						`
+								: ''
+						}
+					</style>`;
+
+				// Wrap the content with HTML that includes dark theme styling
+				fileContent = isMarkdown
+					? `${baseStyles}<div class="markdown-body">${marked(content, { breaks: true })}</div>`
+					: `${baseStyles}${content}`;
 				selectedFile = path;
 			} else {
 				await loadFiles(path);
@@ -147,13 +288,13 @@
 
 {#if hasFiles}
 	<div
-		class="fixed bottom-2 left-2 z-50 flex h-64 transition-transform duration-300 text-white border border-white"
+		class="fixed bottom-2 left-2 z-50 flex h-64 border border-white text-white transition-transform duration-300"
 		class:translate-y-0={isExpanded}
 		class:translate-y-68={!isExpanded}
 	>
 		{#if !isExpanded}
 			<button
-				class="absolute -top-16 left-4 bg-black border border-white text-white px-3 py-2 text-sm font-['Anonymous_Pro'] hover:border-[#FF6222] transition-all duration-200"
+				class="absolute -top-16 left-4 border border-white bg-black px-3 py-2 font-['Anonymous_Pro'] text-sm text-white transition-all duration-200 hover:border-[#FF6222]"
 				onclick={() => (isExpanded = true)}
 			>
 				Show Files
@@ -216,8 +357,7 @@
 						<div class="flex items-center justify-center p-4">
 							<div
 								class="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-white"
-							>
-							</div>
+							></div>
 						</div>
 					{:else}
 						<div class="space-y-1">
@@ -260,8 +400,25 @@
 													d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
 												/>
 											</svg>
+										{:else if isMarkdownFile(file)}
+											<!-- Markdown Icon -->
+											<svg
+												xmlns="http://www.w3.org/2000/svg"
+												class="h-5 w-5"
+												viewBox="0 0 24 24"
+												fill="none"
+												stroke="#FF6222"
+												stroke-width="2"
+												stroke-linecap="round"
+												stroke-linejoin="round"
+											>
+												<path d="M14 3v4a1 1 0 001 1h4" />
+												<path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+												<path d="M9 13h6" />
+												<path d="M9 17h3" />
+											</svg>
 										{:else}
-											<!-- File Icon -->
+											<!-- Regular File Icon -->
 											<svg
 												xmlns="http://www.w3.org/2000/svg"
 												class="h-5 w-5"
@@ -295,7 +452,7 @@
 					{#if selectedFile && fileContent !== null}
 						<iframe
 							title="File Preview"
-							class="h-full w-full rounded border  text-white border-white"
+							class="h-full w-full rounded border border-white text-white"
 							srcdoc={fileContent}
 						/>
 					{:else}

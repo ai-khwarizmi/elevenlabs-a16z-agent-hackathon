@@ -44,6 +44,7 @@
 		"elevenlabs": "^1.51.0",
 		"elevenlabs-node": "^2.0.3",
 		"idb": "^8.0.2",
+		"marked": "^15.0.7",
 		"openai": "^4.85.3",
 		"tailwind-merge": "^3.0.2",
 		"uid": "^2.0.2"
