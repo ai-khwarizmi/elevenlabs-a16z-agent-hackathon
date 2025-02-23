@@ -200,6 +200,24 @@ export async function createAgent(
 	}
 }
 
+function randomGreeting(): string {
+	const greetings = [
+		'Hello!',
+		'Hi!',
+		'Hey!',
+		'Ok',
+		'Okie dokie',
+		'Mhhh',
+		'Mmm',
+		'Mmmh',
+		'Mmmhm',
+		'Mmmhmh',
+		'Mmmhmhm',
+		'Mmmhmhmh'
+	];
+	return greetings[Math.floor(Math.random() * greetings.length)];
+}
+
 export async function updateAgentTools(options: {
 	apiKey: string;
 	agentId: string;
@@ -231,7 +249,7 @@ export async function updateAgentTools(options: {
 							tools: toolsArray,
 							llm: 'gpt-4o'
 						},
-						first_message: options.firstMessage
+						first_message: options.firstMessage || randomGreeting()
 					},
 					conversation: {
 						client_events: [
