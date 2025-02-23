@@ -1,5 +1,6 @@
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
+import { addDeveloperEvent } from './chatlog.svelte';
 
 type AgentWorkPhase = 'PLANNING' | 'DOING';
 
@@ -46,9 +47,11 @@ async function agentDoPlanning(agent: Agent) {
 
 	let hasToolCalls = true;
 
+	let iterations = 0;
 	while (hasToolCalls) {
+		iterations++;
 		const toolDefinitions = agent.getToolDefinitions();
-		console.log('[PLANNING-PHASE] Tool definitions:', toolDefinitions);
+		console.log(`[PLANNING-PHASE][Iteration ${iterations}] Tool definitions:`, toolDefinitions);
 		const aiResponse = await agent.getOpenAI().chat.completions.create({
 			model: 'gpt-4o',
 			messages: currentMessages,
@@ -58,17 +61,13 @@ async function agentDoPlanning(agent: Agent) {
 		});
 
 		const assistantMessage = aiResponse.choices[0].message;
-		console.log('[PLANNING-PHASE] Assistant message:', assistantMessage);
-		if (!assistantMessage.tool_calls) {
-			hasToolCalls = false;
-			break;
-		}
+		console.log(`[PLANNING-PHASE][Iteration ${iterations}] Assistant message:`, assistantMessage);
 
 		currentMessages.push(assistantMessage);
 
 		// Check if there are tool calls in the response
 		const toolCalls = assistantMessage.tool_calls;
-		console.log('[PLANNING-PHASE] Tool calls:', toolCalls?.length);
+		console.log(`[PLANNING-PHASE][Iteration ${iterations}] Tool calls:`, toolCalls?.length);
 		if (!toolCalls || toolCalls.length === 0) {
 			hasToolCalls = false;
 			break;
@@ -76,12 +75,12 @@ async function agentDoPlanning(agent: Agent) {
 
 		// Process each tool call
 		for (const toolCall of toolCalls) {
-			console.log('[PLANNING-PHASE] Executing tool call:', toolCall);
+			console.log(`[PLANNING-PHASE][Iteration ${iterations}] Executing tool call:`, toolCall);
 			const result = await agent.executeTool(
 				toolCall.function.name,
 				JSON.parse(toolCall.function.arguments)
 			);
-			console.log('[PLANNING-PHASE] Tool call result:', result);
+			console.log(`[PLANNING-PHASE][Iteration ${iterations}] Tool call result:`, result);
 			currentMessages.push({
 				role: 'tool',
 				tool_call_id: toolCall.id,
@@ -136,6 +135,7 @@ async function agentDoDoing(agent: Agent) {
 	5. You must use the available tools for saving information. 
 	6. You must ensure that if you work on files, you read them before you write to make sure you don't duplicate or overwrite information.
 	7. Be detail oriented, and ensure you follow all instructions carefully.
+	8. When done, mark the dodo as completed
 	`;
 
 	console.log('[DOING-PHASE] Work prompt:', workPrompt);
@@ -153,15 +153,14 @@ async function agentDoDoing(agent: Agent) {
 		}
 	];
 
-	let hasToolCalls = true;
 	let todoCompleted = false;
 
-	const maxIterations = 15;
+	const maxIterations = 10;
 	let iterations = 0;
-	while (hasToolCalls && !todoCompleted && maxIterations > 0) {
+	while (!todoCompleted && maxIterations > 0) {
 		iterations++;
 		const toolDefinitions = agent.getToolDefinitions();
-		console.log('[DOING-PHASE] Tool definitions:', toolDefinitions);
+		console.log(`[DOING-PHASE][Iteration ${iterations}] Tool definitions:`, toolDefinitions);
 
 		const aiResponse = await agent.getOpenAI().chat.completions.create({
 			model: 'gpt-4o',
@@ -172,30 +171,20 @@ async function agentDoDoing(agent: Agent) {
 		});
 
 		const assistantMessage = aiResponse.choices[0].message;
-		console.log('[DOING-PHASE] Assistant message:', assistantMessage);
-		if (!assistantMessage.content) {
-			hasToolCalls = false;
-			continue;
-		}
+		console.log(`[DOING-PHASE][Iteration ${iterations}] Assistant message:`, assistantMessage);
 
 		currentMessages.push(assistantMessage);
-
-		// Check if there are tool calls in the response
 		const toolCalls = assistantMessage.tool_calls;
-		if (!toolCalls || toolCalls.length === 0) {
-			hasToolCalls = false;
-			continue;
-		}
 
 		// Process each tool call
-		console.log('[DOING-PHASE] Tool calls:', toolCalls.length);
-		for (const toolCall of toolCalls) {
-			console.log('[DOING-PHASE] Executing tool call:', toolCall);
+		console.log(`[DOING-PHASE][Iteration ${iterations}] Tool calls:`, toolCalls?.length);
+		for (const toolCall of toolCalls ?? []) {
+			console.log(`[DOING-PHASE][Iteration ${iterations}] Executing tool call:`, toolCall);
 			const result = await agent.executeTool(
 				toolCall.function.name,
 				JSON.parse(toolCall.function.arguments)
 			);
-			console.log('[DOING-PHASE] Tool call result:', result);
+			console.log(`[DOING-PHASE][Iteration ${iterations}] Tool call result:`, result);
 
 			// Check if this was a todo update that marked our current todo as complete
 			if (toolCall.function.name === 'manage_todos') {
@@ -204,6 +193,9 @@ async function agentDoDoing(agent: Agent) {
 					todoCompleted = true;
 					console.log('[DOING-PHASE] Todo completed:', todo);
 					agent.completeTodo(todo.id);
+					addDeveloperEvent(
+						`${agent.getName()} has worked on the following and completed it: ${todo.title}`
+					);
 					agent.workStatus.phase = 'PLANNING';
 				}
 			}
@@ -215,9 +207,38 @@ async function agentDoDoing(agent: Agent) {
 			});
 		}
 
-		console.log(`[DOING-PHASE] Iterations for agent ${agent.getName()}: ${iterations}`);
+		console.log(
+			`[DOING-PHASE][Iteration ${iterations}] Iterations for agent ${agent.getName()}: ${iterations}`
+		);
 		if (iterations >= maxIterations) {
 			console.log('[DOING-PHASE] Max iterations reached, stopping', currentMessages);
+
+			const summary = await agent.getOpenAI().chat.completions.create({
+				model: 'gpt-4o',
+				messages: [
+					{
+						role: 'system',
+						content: `
+						${agent.getName()} tried to complete the following todo: ${todo.title}.
+						It has failed for some reason, here is the full conversation of the events. can you give a 5-10 word summary why the task was not completed?
+						Here is the conversation:
+						<conversation>
+						${JSON.stringify(agent.getMessageLog())}
+						</conversation>
+						`
+					}
+				]
+			});
+			if (summary.choices[0].message.content) {
+				addDeveloperEvent(
+					`${agent.getName()} has worked on the following but did not complete it: ${todo.title}. Summary: ${summary.choices[0].message.content}`
+				);
+			} else {
+				addDeveloperEvent(
+					`${agent.getName()} has worked on the following but did not complete it: ${todo.title}. Summary: No summary was provided`
+				);
+			}
+
 			break;
 		} else {
 			currentMessages.push({
@@ -227,11 +248,10 @@ async function agentDoDoing(agent: Agent) {
 				`
 			});
 		}
-		await new Promise((resolve) => setTimeout(resolve, 300));
 	}
 }
 
-const MIN_TIME_BETWEEN_WORK_CYCLES = 15 * 1000;
+const MIN_TIME_BETWEEN_WORK_CYCLES = 7.5 * 1000;
 
 export async function agentDoWork(agent: Agent) {
 	const lastWorkTimestamp = agent.lastWorkTimestamp;
