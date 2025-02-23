@@ -108,7 +108,7 @@ async function mainLoop() {
 					/*
 						HAND RAISING LOGIC
 					*/
-					console.log('need to figure out if any agents need to raise their hand');
+					//console.log('need to figure out if any agents need to raise their hand');
 					const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
 					if (activeStartTimestamp) {
 						const timeSinceActive = Date.now() - activeStartTimestamp;

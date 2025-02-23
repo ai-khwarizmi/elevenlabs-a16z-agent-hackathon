@@ -12,41 +12,41 @@ export const todoListTool = new Tool(
 			properties: {
 				action: {
 					name: 'action',
-					description: 'Action to perform on todos',
 					type: 'string',
+					description: 'Action to perform on todos',
 					enum: ['add', 'complete', 'list', 'update_priority']
 				},
 				title: {
 					name: 'title',
-					description: 'Title of the todo item',
-					type: 'string'
+					type: 'string',
+					description: 'Title of the todo item'
 				},
 				description: {
 					name: 'description',
-					description: 'Detailed description of the todo item',
-					type: 'string'
+					type: 'string',
+					description: 'Detailed description of the todo item'
 				},
 				priority: {
 					name: 'priority',
-					description: 'Priority level of the todo item',
 					type: 'string',
+					description: 'Priority level of the todo item',
 					enum: ['high', 'medium', 'low']
 				},
 				todoId: {
 					name: 'todoId',
-					description: 'ID of the todo item to update',
-					type: 'string'
+					type: 'string',
+					description: 'ID of the todo item to update'
 				},
 				requestedBy: {
 					name: 'requestedBy',
-					description: 'Name of the agent or user who requested this todo',
-					type: 'string'
+					type: 'string',
+					description: 'Name of the agent or user who requested this todo'
 				}
 			},
 			required: ['action']
 		}
 	},
-	(async (args, agent) => {
+	(async (args: Record<string, unknown>, agent) => {
 		if (typeof args !== 'object' || args === null) {
 			return {
 				success: false,
@@ -54,49 +54,19 @@ export const todoListTool = new Tool(
 			};
 		}
 
-		const { action, title, description, priority, todoId, requestedBy } = args;
-
-		if (typeof title !== 'string') {
-			return {
-				success: false,
-				message: 'Title is required'
-			};
-		}
-
-		if (typeof description !== 'string') {
-			return {
-				success: false,
-				message: 'Description is required'
-			};
-		}
-
-		if (typeof priority !== 'string') {
-			return {
-				success: false,
-				message: 'Priority is required'
-			};
-		}
-
-		if (typeof todoId !== 'string') {
-			return {
-				success: false,
-				message: 'Todo ID is required'
-			};
-		}
-
-		if (typeof requestedBy !== 'string') {
-			return {
-				success: false,
-				message: 'Requested by is required'
-			};
-		}
+		const action = args.action as string;
+		const title = args.title as string | undefined;
+		const description = args.description as string | undefined;
+		const priority = args.priority as 'high' | 'medium' | 'low' | undefined;
+		const todoId = args.todoId as string | undefined;
+		const requestedBy = args.requestedBy as string | undefined;
 
 		switch (action) {
 			case 'add': {
-				if (!title || !description || !priority) {
+				if (!title || !description || !priority || !requestedBy) {
 					return {
 						success: false,
-						message: 'Title, description, and priority are required for adding a todo'
+						message: 'Title, description, priority, and requestedBy are required for adding a todo'
 					};
 				}
 

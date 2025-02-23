@@ -1,7 +1,7 @@
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { ChatCompletionMessageParam } from 'openai/resources/chat/completions';
 
-type AgentWorkPhase = 'PLANNING' | 'DOING' | 'REVIEWING';
+type AgentWorkPhase = 'PLANNING' | 'DOING';
 
 export type AgentWorkStatus = {
 	phase: AgentWorkPhase;
@@ -59,15 +59,19 @@ async function agentDoPlanning(agent: Agent) {
 
 		const assistantMessage = aiResponse.choices[0].message;
 		console.log('[PLANNING-PHASE] Assistant message:', assistantMessage);
-		if (!assistantMessage.content) continue;
+		if (!assistantMessage.tool_calls) {
+			hasToolCalls = false;
+			break;
+		}
 
 		currentMessages.push(assistantMessage);
 
 		// Check if there are tool calls in the response
 		const toolCalls = assistantMessage.tool_calls;
+		console.log('[PLANNING-PHASE] Tool calls:', toolCalls?.length);
 		if (!toolCalls || toolCalls.length === 0) {
 			hasToolCalls = false;
-			continue;
+			break;
 		}
 
 		// Process each tool call
@@ -79,8 +83,8 @@ async function agentDoPlanning(agent: Agent) {
 			);
 			console.log('[PLANNING-PHASE] Tool call result:', result);
 			currentMessages.push({
-				role: 'function',
-				name: toolCall.function.name,
+				role: 'tool',
+				tool_call_id: toolCall.id,
 				content: JSON.stringify(result)
 			});
 		}
@@ -92,7 +96,7 @@ async function agentDoPlanning(agent: Agent) {
 async function agentDoDoing(agent: Agent) {
 	const todos = agent.getTodos();
 	if (todos.length === 0) {
-		agent.workStatus.phase = 'REVIEWING';
+		agent.workStatus.phase = 'PLANNING';
 		return;
 	}
 
@@ -109,25 +113,128 @@ async function agentDoDoing(agent: Agent) {
 		.find((todo) => todo.status === 'pending');
 
 	if (!todo) {
-		agent.workStatus.phase = 'REVIEWING';
+		agent.workStatus.phase = 'PLANNING';
 		return;
 	}
 
-	agent.workStatus.phase = 'REVIEWING';
-}
+	const workPrompt = `
+	You are:
+	<role>
+	${agent.getPersonality()}
+	</role>
 
-async function agentDoReviewing(agent: Agent) {
-	agent.workStatus.phase = 'PLANNING';
+	You are currently working on the following todo:
+	<todo>
+	${todo.title}
+	${todo.description}
+	</todo>
+
+	1. As context you will be given the conversation with you and your team.
+	2. You must solve the todo using the tools available to you.
+	3. You must update the todo status as you progress.
+	4. You must only stop using tools when the todo is complete.
+	5. You must use the available tools for saving information. 
+	6. You must ensure that if you work on files, you read them before you write to make sure you don't duplicate or overwrite information.
+	7. Be detail oriented, and ensure you follow all instructions carefully.
+	`;
+
+	console.log('[DOING-PHASE] Work prompt:', workPrompt);
+
+	const currentMessages: ChatCompletionMessageParam[] = [
+		{
+			role: 'system',
+			content: workPrompt
+		},
+		{
+			role: 'user',
+			content: `The current conversation: <conversation>${JSON.stringify(
+				agent.getMessageLog()
+			)}</conversation>`
+		}
+	];
+
+	let hasToolCalls = true;
+	let todoCompleted = false;
+
+	const maxIterations = 15;
+	let iterations = 0;
+	while (hasToolCalls && !todoCompleted && maxIterations > 0) {
+		iterations++;
+		const toolDefinitions = agent.getToolDefinitions();
+		console.log('[DOING-PHASE] Tool definitions:', toolDefinitions);
+
+		const aiResponse = await agent.getOpenAI().chat.completions.create({
+			model: 'gpt-4o',
+			messages: currentMessages,
+			tools: agent.getToolDefinitions(),
+			tool_choice: 'auto',
+			parallel_tool_calls: true
+		});
+
+		const assistantMessage = aiResponse.choices[0].message;
+		console.log('[DOING-PHASE] Assistant message:', assistantMessage);
+		if (!assistantMessage.content) {
+			hasToolCalls = false;
+			continue;
+		}
+
+		currentMessages.push(assistantMessage);
+
+		// Check if there are tool calls in the response
+		const toolCalls = assistantMessage.tool_calls;
+		if (!toolCalls || toolCalls.length === 0) {
+			hasToolCalls = false;
+			continue;
+		}
+
+		// Process each tool call
+		console.log('[DOING-PHASE] Tool calls:', toolCalls.length);
+		for (const toolCall of toolCalls) {
+			console.log('[DOING-PHASE] Executing tool call:', toolCall);
+			const result = await agent.executeTool(
+				toolCall.function.name,
+				JSON.parse(toolCall.function.arguments)
+			);
+			console.log('[DOING-PHASE] Tool call result:', result);
+
+			// Check if this was a todo update that marked our current todo as complete
+			if (toolCall.function.name === 'manage_todos') {
+				const args = JSON.parse(toolCall.function.arguments);
+				if (args.action === 'update' && args.id === todo.id && args.status === 'completed') {
+					todoCompleted = true;
+					console.log('[DOING-PHASE] Todo completed:', todo);
+					agent.completeTodo(todo.id);
+					agent.workStatus.phase = 'PLANNING';
+				}
+			}
+
+			currentMessages.push({
+				role: 'tool',
+				content: JSON.stringify(result),
+				tool_call_id: toolCall.id
+			});
+		}
+
+		if (iterations >= maxIterations) {
+			console.log('[DOING-PHASE] Max iterations reached, stopping', currentMessages);
+			break;
+		} else {
+			currentMessages.push({
+				role: 'user',
+				content: `
+				Please make sure to finish the todo, remaining iterations: ${maxIterations - iterations}
+				`
+			});
+		}
+	}
 }
 
 const MIN_TIME_BETWEEN_WORK_CYCLES = 15 * 1000;
 
 export async function agentDoWork(agent: Agent) {
-	return;
 	const lastWorkTimestamp = agent.lastWorkTimestamp;
 	const timeSinceLastWork = Date.now() - lastWorkTimestamp;
 	if (timeSinceLastWork < MIN_TIME_BETWEEN_WORK_CYCLES) {
-		console.log('[AGENT-DO-WORK] Not enough time has passed since last work cycle');
 		return;
 	}
 	agent.lastWorkTimestamp = Date.now();
@@ -151,9 +258,6 @@ export async function agentDoWork(agent: Agent) {
 			break;
 		case 'DOING':
 			await agentDoDoing(agent);
-			break;
-		case 'REVIEWING':
-			await agentDoReviewing(agent);
 			break;
 	}
 }

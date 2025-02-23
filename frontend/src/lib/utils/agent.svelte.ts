@@ -675,7 +675,7 @@ ${JSON.stringify(this.messageLog)}
 		const index = this.todos.findIndex((t) => t.id === todoId);
 		if (index !== -1) {
 			const todo = this.todos[index];
-			this.todos.splice(index, 1);
+			this.todos[index] = { ...todo, status: 'completed' };
 			return todo;
 		}
 		return null;
