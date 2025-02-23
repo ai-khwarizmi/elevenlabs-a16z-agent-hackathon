@@ -1,12 +1,14 @@
 import { Tool, type ToolExecuteFunction } from '$lib/utils/tool.svelte';
+import { agents } from '$lib/stores/agents.svelte';
 
 /**
- * Tool for handing off control to the next agent
+ * Tool for handing off control to the next agent or a specific agent by ID
  */
 export const handOffMicTool = new Tool(
 	{
 		name: 'hand_off_mic',
-		description: 'Hand off control to the next agent, optionally with a message',
+		description:
+			'Hand off control to the next agent or a specific agent by ID, optionally with a message',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -14,25 +16,43 @@ export const handOffMicTool = new Tool(
 					name: 'message',
 					description: 'Optional message to pass along with the hand off',
 					type: 'string'
+				},
+				agentId: {
+					name: 'agentId',
+					description:
+						'Optional ID of the specific agent to hand off to. If not provided, hands off to the next agent.',
+					type: 'string'
 				}
 			},
 			required: []
 		}
 	},
-	(async (args, agent) => {
+	(async (args, currentAgent) => {
 		if (args !== null && typeof args === 'object') {
 			const message = typeof args.message === 'string' ? args.message : undefined;
+			const targetAgentId = typeof args.agentId === 'string' ? args.agentId : undefined;
 
 			// Make the current agent idle
-			agent.makeIdle();
+			currentAgent.makeIdle();
 
-			// If a message was provided, it will be treated as a chat/voice message
-			// The message will be handled by the system when control is handed off
+			// If a specific agent was requested, activate them
+			if (targetAgentId) {
+				const targetAgent = agents.getAgentById(targetAgentId);
+				if (targetAgent) {
+					targetAgent.makeAgentActive();
+				} else {
+					return {
+						success: false,
+						message: `Target agent with ID ${targetAgentId} not found`
+					};
+				}
+			}
 
 			return {
 				success: true,
-				message: message ? 'Handing off control with message' : 'Handing off control',
-				sentMessage: message
+				message: `Handing off control${targetAgentId ? ` to agent ${targetAgentId}` : ''}${message ? ' with message' : ''}`,
+				sentMessage: message,
+				targetAgentId
 			};
 		}
 

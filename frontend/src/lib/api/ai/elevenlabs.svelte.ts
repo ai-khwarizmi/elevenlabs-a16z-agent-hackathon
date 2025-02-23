@@ -201,20 +201,7 @@ export async function createAgent(
 }
 
 function randomGreeting(): string {
-	const greetings = [
-		'Hello!',
-		'Hi!',
-		'Hey!',
-		'Ok',
-		'Okie dokie',
-		'Mhhh',
-		'Mmm',
-		'Mmmh',
-		'Mmmhm',
-		'Mmmhmh',
-		'Mmmhmhm',
-		'Mmmhmhmh'
-	];
+	const greetings = ['Hello!', 'Hi!', 'Hey!', 'Ok', 'Okie dokie', 'Yo'];
 	return greetings[Math.floor(Math.random() * greetings.length)];
 }
 
