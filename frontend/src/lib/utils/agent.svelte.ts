@@ -24,18 +24,6 @@ import { getAgentId, storeAgentId } from '$lib/storage/agent.storage';
 import type { AgentWorkStatus } from '$lib/stores/agentsWorkLifeCycle.svelte';
 import { createProgressNotification } from '$lib/stores/notifications';
 
-// Interface for a todo item
-interface Todo {
-	id: string;
-	title: string;
-	description: string;
-	priority: 'high' | 'medium' | 'low';
-	status: 'pending' | 'in_progress' | 'completed';
-	requestedBy?: string;
-	createdAt: Date;
-	completedAt?: Date;
-}
-
 export type AgentState = 'IDLE' | 'ACTIVE' | 'LEFT_CALL' | 'WORKING' | 'RAISED_HAND';
 
 // Map of valid state transitions
@@ -47,6 +35,24 @@ const VALID_STATE_TRANSITIONS: Record<AgentState, AgentState[]> = {
 	RAISED_HAND: ['IDLE', 'ACTIVE']
 };
 
+// Add type definitions for todo tool results
+export interface Todo {
+	id: string;
+	title: string;
+	description: string;
+	priority: 'high' | 'medium' | 'low';
+	status: 'pending' | 'completed';
+	requestedBy: string;
+	completedAt?: Date;
+}
+
+interface TodoToolResult {
+	success: boolean;
+	message: string;
+	todo?: Todo;
+	todos?: Todo[];
+}
+
 interface SerializedAgent {
 	id: string;
 	name: string;
@@ -54,7 +60,7 @@ interface SerializedAgent {
 	toolIds: string[];
 	messageLog: TimestampedMessage[];
 	profilePicture: string | null;
-	todos: Todo[];
+	todos: Todo[]; // Now properly typed
 	elevenLabsVoiceId: string | null;
 	state: AgentState;
 }
@@ -672,54 +678,64 @@ ${JSON.stringify(this.messageLog)}
 	/**
 	 * Get the agent's todos
 	 */
-	getTodos(): Todo[] {
-		return this.todos;
+	async getTodos(): Promise<Todo[]> {
+		const result = (await this.executeTool('manage_todos', { action: 'list' })) as TodoToolResult;
+		if (result.success && result.todos) {
+			this.todos = result.todos;
+			return result.todos;
+		}
+		return [];
 	}
 
 	/**
 	 * Add a todo to the agent's todos
 	 */
-	addTodo(todo: Omit<Todo, 'id' | 'createdAt' | 'status'>): void {
-		this.todos = [
-			...this.todos,
-			{
-				...todo,
-				id: uid(),
-				createdAt: new Date(),
-				status: 'pending'
-			}
-		];
+	async addTodo(todo: {
+		title: string;
+		description: string;
+		priority: 'high' | 'medium' | 'low';
+		requestedBy?: string;
+	}): Promise<void> {
+		const result = (await this.executeTool('manage_todos', {
+			action: 'add',
+			...todo,
+			requestedBy: todo.requestedBy || this.name
+		})) as TodoToolResult;
+		if (result.success) {
+			await this.getTodos(); // Refresh todos
+		}
 	}
 
 	/**
 	 * Complete a todo
 	 */
-	completeTodo(todoId: string): Todo | null {
-		const index = this.todos.findIndex((t) => t.id === todoId);
-		if (index !== -1) {
-			const todo = this.todos[index];
-			this.todos[index] = { ...todo, status: 'completed' };
-			return todo;
+	async completeTodo(todoId: string): Promise<Todo | null> {
+		const result = (await this.executeTool('manage_todos', {
+			action: 'complete',
+			todoId
+		})) as TodoToolResult;
+		if (result.success && result.todo) {
+			await this.getTodos(); // Refresh todos
+			return result.todo;
 		}
 		return null;
 	}
 
 	/**
-	 * Update a todo
-	 */
-	updateTodo(todo: Todo): void {
-		this.todos = this.todos.map((t) => (t.id === todo.id ? todo : t));
-	}
-
-	/**
 	 * Update a todo's priority
 	 */
-	updateTodoPriority(todoId: string, priority: 'high' | 'medium' | 'low'): Todo | null {
-		const todo = this.todos.find((t) => t.id === todoId);
-		if (todo) {
-			const updatedTodo = { ...todo, priority };
-			this.updateTodo(updatedTodo);
-			return updatedTodo;
+	async updateTodoPriority(
+		todoId: string,
+		priority: 'high' | 'medium' | 'low'
+	): Promise<Todo | null> {
+		const result = (await this.executeTool('manage_todos', {
+			action: 'update_priority',
+			todoId,
+			priority
+		})) as TodoToolResult;
+		if (result.success && result.todo) {
+			await this.getTodos(); // Refresh todos
+			return result.todo;
 		}
 		return null;
 	}

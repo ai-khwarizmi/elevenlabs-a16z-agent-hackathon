@@ -1,26 +1,31 @@
 <script lang="ts">
 	import type { Agent } from '$lib/utils/agent.svelte';
+	import type { Todo } from '$lib/utils/agent.svelte';
+	import type { AgentState } from '$lib/utils/agent.svelte';
 	import TextScramble from './TextScramble.svelte';
 
-	let {
-		agent
-	}: {
-		agent: Agent;
-	} = $props();
+	const { agent }: { agent: Agent } = $props();
 	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
 	let agentState = $derived(agent.getState());
+	let todos = $state<Todo[]>([]);
 
 	$effect(() => {
 		agent;
 		showMessages = false;
 	});
 
+	$effect(() => {
+		agent.getTodos().then((newTodos) => {
+			todos = newTodos;
+		});
+	});
+
 	let stateClasses = $derived(() => {
 		switch (agentState) {
 			case 'IDLE':
 				return 'bg-gray-100 text-gray-800';
-			case 'VOICE_ACTIVE':
+			case 'ACTIVE':
 				return 'bg-blue-100 text-blue-800';
 			case 'LEFT_CALL':
 				return 'bg-red-100 text-red-800';
@@ -32,6 +37,30 @@
 				return 'bg-gray-100 text-gray-800';
 		}
 	});
+
+	function getPriorityColor(priority: string) {
+		switch (priority) {
+			case 'high':
+				return 'bg-red-500 text-white';
+			case 'medium':
+				return 'bg-yellow-500 text-black';
+			case 'low':
+				return 'bg-green-500 text-white';
+			default:
+				return 'bg-gray-500 text-white';
+		}
+	}
+
+	function getStatusColor(status: 'pending' | 'completed'): string {
+		switch (status) {
+			case 'pending':
+				return 'bg-gray-500 text-white';
+			case 'completed':
+				return 'bg-green-500 text-white';
+			default:
+				return 'bg-gray-500 text-white';
+		}
+	}
 </script>
 
 <div class="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
@@ -77,11 +106,11 @@
 			</div>
 		</div>
 	{/if}
-	{#if agent.getTodos().length > 0}
+	{#if todos.length > 0}
 		<div class="mt-4">
 			<p class="text-sm font-medium text-gray-700">Todo List:</p>
 			<div class="mt-2 space-y-2">
-				{#each agent.getTodos() as todo}
+				{#each todos as todo}
 					<div class="flex items-center justify-between rounded-lg bg-gray-50 p-3">
 						<div>
 							<h4 class="font-medium text-gray-900">{todo.title}</h4>
@@ -103,8 +132,6 @@
 								class="rounded-full px-2 py-1 text-xs font-medium"
 								class:bg-blue-100={todo.status === 'pending'}
 								class:text-blue-800={todo.status === 'pending'}
-								class:bg-purple-100={todo.status === 'in_progress'}
-								class:text-purple-800={todo.status === 'in_progress'}
 								class:bg-green-100={todo.status === 'completed'}
 								class:text-green-800={todo.status === 'completed'}
 							>

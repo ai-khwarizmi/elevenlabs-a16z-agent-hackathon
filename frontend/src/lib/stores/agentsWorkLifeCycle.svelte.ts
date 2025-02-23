@@ -14,7 +14,7 @@ async function agentDoPlanning(agent: Agent) {
 	const notification = createProgressNotification(`${agent.getName()} is planning next actions...`);
 
 	try {
-		const todoList = agent.getTodos();
+		const todoList = await agent.getTodos();
 		const planningPrompt = `
 		You are:
 		<role>
@@ -105,7 +105,7 @@ async function agentDoPlanning(agent: Agent) {
 }
 
 async function agentDoDoing(agent: Agent) {
-	const todos = agent.getTodos();
+	const todos = await agent.getTodos();
 	if (todos.length === 0) {
 		agent.workStatus.phase = 'PLANNING';
 		return;
@@ -296,7 +296,7 @@ export async function agentDoWork(agent: Agent) {
 	}
 
 	//if phase is planning, and the todo list has unfinished todos, then skip planning phase
-	const todos = agent.getTodos();
+	const todos = await agent.getTodos();
 	if (agent.workStatus.phase === 'PLANNING' && todos.some((todo) => todo.status === 'pending')) {
 		console.log('[AGENT-DO-WORK] Todo list has unfinished todos, skipping planning phase');
 		agent.workStatus.phase = 'DOING';

@@ -133,6 +133,7 @@ async function mainLoop() {
 			}
 		} catch (error) {
 			console.error('Error in main loop:', error);
+			await new Promise((resolve) => setTimeout(resolve, 10000));
 		}
 
 		// Wait a bit before next check to avoid tight loop

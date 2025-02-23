@@ -3,14 +3,21 @@
 	import type { Agent } from '$lib/utils/agent.svelte';
 	import { cn } from '$lib/utils/tw';
 	import TextScramble from './TextScramble.svelte';
+	import type { Todo } from '$lib/utils/agent.svelte';
 
 	const { agent }: { agent: Agent } = $props();
 	let showPopup = $state(false);
 	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
 
-	let todos = $derived(agent.getTodos());
+	let todos = $state<Todo[]>([]);
 	let activeTodos = $derived(todos.filter((todo) => todo.status !== 'completed'));
+
+	$effect(() => {
+		agent.getTodos().then((newTodos) => {
+			todos = newTodos;
+		});
+	});
 
 	function togglePopup() {
 		showPopup = !showPopup;
