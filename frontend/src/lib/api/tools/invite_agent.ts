@@ -9,7 +9,7 @@ import { agentBaseTools } from '../agents/helper';
 export const inviteTool = new Tool(
 	{
 		name: 'invite_agent',
-		description: 'Invite a new agent with specific capabilities to join the conversation',
+		description: 'Invite a new agent with very specific capabilities to join the conversation',
 		parameters: {
 			type: 'object',
 			properties: {
@@ -20,7 +20,8 @@ export const inviteTool = new Tool(
 				},
 				personality: {
 					name: 'personality',
-					description: "Detailed description of the agent's personality and capabilities",
+					description:
+						"Detailed description of the agent's personality and capability. This must be very narrow, only specialized in a specific section of their area of work.",
 					type: 'string'
 				}
 			},
