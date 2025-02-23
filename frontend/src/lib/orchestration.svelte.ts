@@ -106,10 +106,10 @@ async function mainLoop() {
 						HAND RAISING LOGIC
 					*/
 					//console.log('need to figure out if any agents need to raise their hand');
-					const activeStartTimestamp = activeAgent.getActiveStartTimestamp();
-					if (activeStartTimestamp) {
-						const timeSinceActive = Date.now() - activeStartTimestamp;
-						console.log('current agent has been active for ', timeSinceActive, 'ms');
+					const activeStartTimestamp = activeAgent.getActiveStartTimestamp() || 0;
+					const timeSinceActive = Date.now() - activeStartTimestamp;
+					console.log('current agent has been active for ', timeSinceActive, 'ms');
+					if (timeSinceActive > 15000) {
 						const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
 						for (const agent of idleAgents) {
 							const urgency = await agent.considerRaisingHand();
@@ -120,15 +120,10 @@ async function mainLoop() {
 								await new Promise((resolve) => setTimeout(resolve, 4000));
 								activeAgent.makeIdle();
 								agent.makeActive();
+								break;
 							}
 						}
 					}
-				}
-
-				//find all idle agents
-				const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
-				for (const agent of idleAgents) {
-					await agentDoWork(agent);
 				}
 			}
 		} catch (error) {
@@ -143,9 +138,24 @@ async function mainLoop() {
 
 let mainLoopStarted = false;
 
+async function handleIdleAgents() {
+	//find all idle agents
+	try {
+		const agentList: Agent[] = agents.list;
+		const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
+		for (const agent of idleAgents) {
+			await agentDoWork(agent);
+		}
+	} catch (error) {
+		console.error('Error in handleIdleAgents:', error);
+	}
+	setTimeout(handleIdleAgents, 7500);
+}
+
 export function startMainLoop() {
 	if (!mainLoopStarted) {
 		mainLoopStarted = true;
 		mainLoop();
+		handleIdleAgents();
 	}
 }
