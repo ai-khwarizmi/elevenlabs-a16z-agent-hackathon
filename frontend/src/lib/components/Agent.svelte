@@ -9,6 +9,9 @@
 	let showMessages = $state(false);
 	let messages = $derived(agent.getMessageLog());
 
+	let todos = $derived(agent.getTodos());
+	let activeTodos = $derived(todos.filter((todo) => todo.status !== 'completed'));
+
 	function togglePopup() {
 		showPopup = !showPopup;
 		if (!showPopup) showMessages = false;
@@ -30,6 +33,32 @@
 				return 'bg-gray-100 text-gray-800';
 		}
 	});
+
+	function getPriorityColor(priority: string) {
+		switch (priority) {
+			case 'high':
+				return 'bg-red-500 text-white';
+			case 'medium':
+				return 'bg-yellow-500 text-black';
+			case 'low':
+				return 'bg-green-500 text-white';
+			default:
+				return 'bg-gray-500 text-white';
+		}
+	}
+
+	function getStatusColor(status: string) {
+		switch (status) {
+			case 'pending':
+				return 'bg-gray-500 text-white';
+			case 'in_progress':
+				return 'bg-blue-500 text-white';
+			case 'completed':
+				return 'bg-green-500 text-white';
+			default:
+				return 'bg-gray-500 text-white';
+		}
+	}
 </script>
 
 <div
@@ -38,7 +67,7 @@
 	role="button"
 	tabindex="0"
 	class={cn(
-		'flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3',
+		'group flex w-full cursor-pointer flex-col items-center justify-center gap-2 border border-white bg-black p-3 transition-all duration-200 hover:bg-orange-500/15',
 		agent.getState() === 'ACTIVE' ? 'border-[#FF6222]' : '',
 		agent.getState() === 'IDLE' ? 'border-gray-500' : '',
 		agent.getState() === 'WORKING' ? 'border-white' : 'border-gray-500',
@@ -48,26 +77,37 @@
 	<div class="flex w-full flex-col items-center justify-center gap-2">
 		<!-- Agent Info -->
 		<div class="w-full text-center">
-			<h2 class="text-xl font-bold text-white">
+			<h2 class="flex items-center justify-center gap-2 text-xl font-bold text-white">
 				{agent.getName()}
+				{#if activeTodos.length > 0}
+					<span
+						class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-1.5 text-xs font-medium text-white shadow-sm shadow-orange-500/20"
+					>
+						{activeTodos.length}
+					</span>
+				{/if}
 			</h2>
 		</div>
 		<!-- Image container -->
-		<div class="relative aspect-square w-full max-w-[179px]">
+		<div
+			class="relative aspect-square w-full max-w-[179px] transition-transform duration-200 group-hover:scale-105"
+		>
 			{#if agent.getProfilePicture()}
 				<img
 					src={agent.getProfilePicture()}
 					alt={agent.getName()}
-					class="h-full w-full rounded-full bg-gray-900 object-cover"
+					class="h-full w-full rounded-full bg-gray-900 object-cover shadow-lg ring-2 ring-white/20"
 				/>
 			{:else}
-				<div class="flex h-full w-full items-center justify-center rounded-full bg-gray-900">
+				<div
+					class="flex h-full w-full items-center justify-center rounded-full bg-gray-900 shadow-lg ring-2 ring-white/20"
+				>
 					<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
 				</div>
 			{/if}
 			{#if agent.getState() === 'ACTIVE'}
 				<div
-					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border border-[#FF6222] bg-white"
+					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border-2 border-[#FF6222] bg-white shadow-lg"
 				>
 					{#if agent.getState() === 'ACTIVE'}
 						<div class="audio-wave">
@@ -111,7 +151,7 @@
 <!-- Popup overlay -->
 {#if showPopup}
 	<div
-		class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50"
+		class="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm transition-all duration-300"
 		onclick={togglePopup}
 		onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 		role="button"
@@ -119,18 +159,18 @@
 	>
 		<!-- Popup content -->
 		<div
-			class="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-white bg-black p-6"
+			class="mx-4 max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-white/20 bg-black p-6 shadow-2xl"
 			onclick={(e) => e.stopPropagation()}
 			onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 			role="button"
 			tabindex="0"
 		>
 			<!-- Header -->
-			<div class="mb-4 flex items-center justify-between">
+			<div class="mb-6 flex items-center justify-between border-b border-white/10 pb-4">
 				<h2 class="text-2xl font-bold text-white">Agent Details</h2>
 				<button
 					onclick={togglePopup}
-					class="text-white"
+					class="rounded-full p-2 text-white transition-colors hover:bg-white/10"
 					onkeydown={(e) => e.key === 'Enter' && togglePopup()}
 					tabindex="0"
 					aria-label="Close"
@@ -152,16 +192,18 @@
 					<img
 						src={agent.getProfilePicture()}
 						alt="{agent.getName()}'s profile"
-						class="h-20 w-20 rounded-full object-cover"
+						class="h-24 w-24 rounded-full object-cover ring-2 ring-white/20"
 					/>
 				{:else}
-					<div class="flex h-20 w-20 items-center justify-center rounded-full bg-white">
-						<span class="text-3xl text-white">{agent.getName()[0].toUpperCase()}</span>
+					<div
+						class="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 ring-2 ring-white/20"
+					>
+						<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
 					</div>
 				{/if}
 				<div class="flex-1">
 					<div class="flex items-center justify-between">
-						<h3 class="text-xl font-medium text-white">{agent.getName()}</h3>
+						<h3 class="text-2xl font-medium text-white">{agent.getName()}</h3>
 						<div class="min-w-[100px]">
 							<TextScramble
 								text={agent.getState()}
@@ -169,17 +211,19 @@
 							/>
 						</div>
 					</div>
-					<p class="mt-2 text-white">{agent.getPersonality()}</p>
+					<p class="mt-2 text-lg text-white/80">{agent.getPersonality()}</p>
 				</div>
 			</div>
 
 			<!-- Tools section -->
 			{#if agent.getTools().length > 0}
-				<div class="mb-6">
-					<h4 class="mb-2 text-lg font-medium text-white">Tools</h4>
+				<div class="mb-6 rounded-lg bg-white/5 p-4">
+					<h4 class="mb-3 text-lg font-medium text-white">Tools</h4>
 					<div class="flex flex-wrap gap-2">
 						{#each agent.getTools() as tool}
-							<span class="bg-white px-3 py-1 text-sm font-medium text-black">
+							<span
+								class="rounded-full bg-white/10 px-4 py-1.5 text-sm font-medium text-white transition-colors hover:bg-white/20"
+							>
 								{tool.getDefinition().function.name}
 							</span>
 						{/each}
@@ -188,39 +232,46 @@
 			{/if}
 
 			<!-- Todo list section -->
-			{#if agent.getTodos().length > 0}
-				<div class="mb-6">
-					<h4 class="mb-2 text-lg font-medium text-white">Todo List</h4>
-					<div class="space-y-2">
-						{#each agent.getTodos() as todo}
-							<div class="flex items-center justify-between rounded-lg bg-gray-50 p-3">
-								<div>
-									<h5 class="font-medium text-white">{todo.title}</h5>
-									<p class="text-sm text-white">{todo.description}</p>
-								</div>
-								<div class="flex items-center gap-2">
-									<span
-										class="rounded-full px-2 py-1 text-xs font-medium"
-										class:bg-red-100={todo.priority === 'high'}
-										class:text-red-800={todo.priority === 'high'}
-										class:bg-yellow-100={todo.priority === 'medium'}
-										class:text-yellow-800={todo.priority === 'medium'}
-										class:bg-green-100={todo.priority === 'low'}
-										class:text-green-800={todo.priority === 'low'}
-									>
-										{todo.priority}
-									</span>
-									<span
-										class="rounded-full px-2 py-1 text-xs font-medium"
-										class:bg-blue-100={todo.status === 'pending'}
-										class:text-blue-800={todo.status === 'pending'}
-										class:bg-purple-100={todo.status === 'in_progress'}
-										class:text-purple-800={todo.status === 'in_progress'}
-										class:bg-green-100={todo.status === 'completed'}
-										class:text-green-800={todo.status === 'completed'}
-									>
-										{todo.status}
-									</span>
+			{#if activeTodos.length > 0}
+				<div class="mb-6 rounded-lg bg-white/5 p-4">
+					<h4 class="mb-3 text-lg font-medium text-white">Todo List</h4>
+					<div class="grid gap-3">
+						{#each activeTodos as todo}
+							<div class="rounded-lg bg-white/10 p-4 transition-all duration-200 hover:bg-white/15">
+								<div class="flex flex-col gap-2">
+									<div class="flex items-start justify-between">
+										<div>
+											<h5 class="text-lg font-medium text-white">{todo.title}</h5>
+											<p class="mt-1 text-sm text-white/80">{todo.description}</p>
+										</div>
+										<div class="flex flex-col items-end gap-2">
+											<span
+												class="rounded-full px-3 py-1 text-xs font-medium {getPriorityColor(
+													todo.priority
+												)}"
+											>
+												{todo.priority}
+											</span>
+											<span
+												class="rounded-full px-3 py-1 text-xs font-medium {getStatusColor(
+													todo.status
+												)}"
+											>
+												{todo.status}
+											</span>
+										</div>
+									</div>
+									{#if todo.requestedBy}
+										<div class="mt-1 text-xs text-white/60">
+											Requested by: {todo.requestedBy}
+										</div>
+									{/if}
+									<div class="flex justify-between text-xs text-white/60">
+										<span>Created: {new Date(todo.createdAt).toLocaleDateString()}</span>
+										{#if todo.completedAt}
+											<span>Completed: {new Date(todo.completedAt).toLocaleDateString()}</span>
+										{/if}
+									</div>
 								</div>
 							</div>
 						{/each}
@@ -230,11 +281,12 @@
 
 			<!-- Message log section -->
 			{#if messages.length > 0}
-				<div>
+				<div class="rounded-lg bg-white/5 p-4">
 					<button
 						onclick={() => (showMessages = !showMessages)}
-						class="mb-2 flex items-center gap-2 text-sm font-medium text-white"
+						class="mb-3 flex w-full items-center justify-between rounded-lg p-2 text-white transition-colors hover:bg-white/10"
 					>
+						<span class="text-lg font-medium">Message Log ({messages.length})</span>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5 transition-transform duration-200"
@@ -250,21 +302,22 @@
 								d="M9 5l7 7-7 7"
 							/>
 						</svg>
-						Message Log ({messages.length})
 					</button>
 
 					{#if showMessages}
-						<div class="space-y-2">
+						<div class="grid gap-3">
 							{#each messages as message}
-								<div class="rounded-lg bg-black p-3">
-									<div class="flex flex-col gap-1">
+								<div
+									class="overflow-y-auto rounded-lg bg-white/10 p-4 transition-all duration-200 hover:bg-white/15"
+								>
+									<div class="flex flex-col gap-2">
 										<div class="flex items-center justify-between">
-											<span class="font-medium text-white">{message.role}:</span>
-											<span class="text-xs text-white">
+											<span class="font-medium text-white">{message.role}</span>
+											<span class="text-xs text-white/60">
 												{new Date(message.timestamp).toLocaleString()}
 											</span>
 										</div>
-										<p class="text-sm text-white">{message.content}</p>
+										<p class="overflow-y-auto text-sm text-white/80">{message.content}</p>
 									</div>
 								</div>
 							{/each}
