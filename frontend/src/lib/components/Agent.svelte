@@ -78,7 +78,7 @@
 		<!-- Agent Info -->
 		<div class="w-full text-center">
 			<h2 class="line-clamp-1 text-xl font-bold text-white">
-				{agent.getName()}
+				<TextScramble text={agent.getName()} />
 				{#if activeTodos.length > 0}
 					<span
 						class="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-gradient-to-r from-orange-500 to-red-500 px-1.5 text-xs font-medium text-white shadow-sm shadow-orange-500/20"
@@ -100,12 +100,14 @@
 				<div
 					class="flex h-full w-full items-center justify-center rounded-full bg-gray-900 shadow-lg ring-2 ring-white/20"
 				>
-					<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
+					<span class="text-4xl text-white">
+						<TextScramble text={agent.getName()[0].toUpperCase()} />
+					</span>
 				</div>
 			{/if}
 			{#if agent.getState() === 'ACTIVE' && agents.mode === 'VOICE' && agent.getIsConnectedToConversation()}
 				<div
-					class="absolute bottom-2 right-1/2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border-2 border-[#FF6222] bg-white shadow-lg"
+					class="absolute right-1/2 bottom-2 flex aspect-square w-1/4 translate-x-1/2 items-center justify-center rounded-full border-2 border-[#FF6222] bg-white shadow-lg"
 				>
 					<div class="audio-wave">
 						<div class="bar"></div>
@@ -132,7 +134,7 @@
 					? 'text-[#FF6222]'
 					: 'text-white'}"
 			>
-				{agent.getState()}
+				<TextScramble text={agent.getState()} />
 			</span>
 		{/if}
 	</div>
@@ -188,12 +190,16 @@
 					<div
 						class="flex h-24 w-24 items-center justify-center rounded-full bg-white/10 ring-2 ring-white/20"
 					>
-						<span class="text-4xl text-white">{agent.getName()[0].toUpperCase()}</span>
+						<span class="text-4xl text-white">
+							{agent.getName()[0].toUpperCase()}
+						</span>
 					</div>
 				{/if}
 				<div class="flex-1">
 					<div class="flex items-center justify-between">
-						<h3 class="text-2xl font-medium text-white">{agent.getName()}</h3>
+						<h3 class="text-2xl font-medium text-white">
+							{agent.getName()}
+						</h3>
 						<div class="min-w-[100px]">
 							<TextScramble
 								text={agent.getState()}
@@ -201,7 +207,9 @@
 							/>
 						</div>
 					</div>
-					<p class="mt-2 text-lg text-white/80">{agent.getPersonality()}</p>
+					<p class="mt-2 text-lg text-white/80">
+						{agent.getPersonality()}
+					</p>
 				</div>
 			</div>
 
@@ -231,8 +239,12 @@
 								<div class="flex flex-col gap-2">
 									<div class="flex items-start justify-between">
 										<div>
-											<h5 class="text-lg font-medium text-white">{todo.title}</h5>
-											<p class="mt-1 text-sm text-white/80">{todo.description}</p>
+											<h5 class="text-lg font-medium text-white">
+												<TextScramble text={todo.title} />
+											</h5>
+											<p class="mt-1 text-sm text-white/80">
+												{todo.description}
+											</p>
 										</div>
 										<div class="flex flex-col items-end gap-2">
 											<span
@@ -257,9 +269,13 @@
 										</div>
 									{/if}
 									<div class="flex justify-between text-xs text-white/60">
-										<span>Created: {new Date(todo.createdAt).toLocaleDateString()}</span>
+										<span>
+											Created: {new Date(todo.createdAt).toLocaleDateString()}
+										</span>
 										{#if todo.completedAt}
-											<span>Completed: {new Date(todo.completedAt).toLocaleDateString()}</span>
+											<span>
+												Completed: {new Date(todo.completedAt).toLocaleDateString()}
+											</span>
 										{/if}
 									</div>
 								</div>
@@ -276,7 +292,9 @@
 						onclick={() => (showMessages = !showMessages)}
 						class="mb-3 flex w-full items-center justify-between rounded-lg p-2 text-white transition-colors hover:bg-white/10"
 					>
-						<span class="text-lg font-medium">Message Log ({messages.length})</span>
+						<span class="text-lg font-medium">
+							Message Log ({messages.length})
+						</span>
 						<svg
 							xmlns="http://www.w3.org/2000/svg"
 							class="h-5 w-5 transition-transform duration-200"
@@ -302,12 +320,18 @@
 								>
 									<div class="flex flex-col gap-2">
 										<div class="flex items-center justify-between">
-											<span class="font-medium text-white">{message.role}</span>
+											<span class="font-medium text-white">
+												{message.role}
+											</span>
 											<span class="text-xs text-white/60">
 												{new Date(message.timestamp).toLocaleString()}
 											</span>
 										</div>
-										<p class="overflow-y-auto text-sm text-white/80">{message.content}</p>
+										<p class="overflow-y-auto text-sm text-white/80">
+											{typeof message.content === 'string'
+												? message.content
+												: JSON.stringify(message.content)}
+										</p>
 									</div>
 								</div>
 							{/each}
