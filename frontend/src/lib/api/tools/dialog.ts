@@ -181,10 +181,15 @@ The dialog will show a countdown timer to indicate when it will close.`,
 				};
 			}
 
+			// Get the value for the single field we created
+			const fieldValue = result[field_id];
+
+			console.log('fieldValue', fieldValue);
 			return {
 				success: true,
-				message: 'User submitted the form',
-				values: result
+				dialogOutput: JSON.stringify({
+					value: fieldValue
+				})
 			};
 		} catch (error) {
 			return {

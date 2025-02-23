@@ -46,13 +46,6 @@ export interface Todo {
 	completedAt?: Date;
 }
 
-interface TodoToolResult {
-	success: boolean;
-	message: string;
-	todo?: Todo;
-	todos?: Todo[];
-}
-
 interface SerializedAgent {
 	id: string;
 	name: string;
@@ -245,8 +238,10 @@ export class Agent {
 			clientTools[tool.function.name] = async (args: Record<string, unknown>) => {
 				console.log(`[${this.name}] Executing tool: ${tool.function.name}`);
 				const result = await this.executeTool(tool.function.name, args as ToolArgs);
-				console.log(`[${this.name}] Tool ${tool.function.name} execution completed`);
-				return String(result);
+				console.log(
+					`[${this.name}] Tool ${tool.function.name} execution completed. Result: ${JSON.stringify(result)}`
+				);
+				return typeof result === 'string' ? result : JSON.stringify(result);
 			};
 		}
 
