@@ -120,12 +120,15 @@ async function mainLoop() {
 								await new Promise((resolve) => setTimeout(resolve, 4000));
 								activeAgent.makeIdle();
 								agent.makeActive();
-							} else if (urgency === null) {
-								//agent doesnt want to raise their hand, lets see if they want to do work
-								await agentDoWork(agent);
 							}
 						}
 					}
+				}
+
+				//find all idle agents
+				const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
+				for (const agent of idleAgents) {
+					await agentDoWork(agent);
 				}
 			}
 		} catch (error) {
