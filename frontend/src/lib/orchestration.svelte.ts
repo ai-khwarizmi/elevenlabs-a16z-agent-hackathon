@@ -109,7 +109,7 @@ async function mainLoop() {
 					const activeStartTimestamp = activeAgent.getActiveStartTimestamp() || 0;
 					const timeSinceActive = Date.now() - activeStartTimestamp;
 					console.log('current agent has been active for ', timeSinceActive, 'ms');
-					if (timeSinceActive > 15000) {
+					if (timeSinceActive > 30000) {
 						const idleAgents = agentList.filter((agent) => agent.getState() === 'IDLE');
 						for (const agent of idleAgents) {
 							const urgency = await agent.considerRaisingHand();
