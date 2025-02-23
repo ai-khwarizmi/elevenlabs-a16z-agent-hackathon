@@ -1,3 +1,4 @@
+import { agents } from '$lib/stores/agents.svelte';
 import type { Agent } from '$lib/utils/agent.svelte';
 import type { Tool } from '$lib/utils/tool.svelte';
 
@@ -6,6 +7,31 @@ interface VoicePreview {
 	duration_secs: number;
 	media_type: string;
 }
+
+const ELEVENLABS_SYSTEM_PROMPT = `
+You are {{agent_name}}.
+
+Please follow these instructions precisely:
+<instructions>
+{{instructions}}
+</instructions>
+
+Please act as if you have been a part of the following conversation, and pick up where the conversation left off:
+<conversation>
+{{conversation}}
+</conversation>
+
+The following is really important:
+1. Assume that the above conversation is still ongoing.
+2. Pick up where the conversation left off.
+3. If the user asks who else is on the call, take a look at the conversation logs to determine the answer.
+4. It must feel seemless, like the call/conversation is still ongoing.
+5. It is VITALLY important that you do not miss who else is on the call.
+
+<participants>
+{{participants}}
+</participants>
+`;
 
 export async function createOrPickRandomVoice(
 	name: string,
@@ -106,15 +132,7 @@ function makeToolsArray(tools: Tool[]): {
 		expects_response: boolean;
 		parameters?: Record<string, unknown>;
 		response_timeout_secs: number;
-	}[] = [
-		{
-			type: 'client',
-			name: 'get_persona',
-			description: "Get the agent's personality description",
-			expects_response: true,
-			response_timeout_secs: 30
-		}
-	];
+	}[] = [];
 	for (const tool of tools) {
 		toolsArray.push({
 			type: 'client',
@@ -145,8 +163,9 @@ export async function createAgent(
 				conversation_config: {
 					agent: {
 						prompt: {
-							prompt: options.agent.getSystemPrompt(),
-							tools: toolsArray
+							prompt: ELEVENLABS_SYSTEM_PROMPT,
+							tools: toolsArray,
+							llm: 'gpt-4o'
 						}
 					},
 					tts: {
@@ -158,7 +177,8 @@ export async function createAgent(
 							'interruption',
 							'agent_response',
 							'client_tool_call',
-							'user_transcript'
+							'user_transcript',
+							'agent_response_correction'
 						]
 					}
 				}
@@ -180,6 +200,24 @@ export async function createAgent(
 	}
 }
 
+function randomGreeting(): string {
+	const greetings = [
+		'Hello!',
+		'Hi!',
+		'Hey!',
+		'Ok',
+		'Okie dokie',
+		'Mhhh',
+		'Mmm',
+		'Mmmh',
+		'Mmmhm',
+		'Mmmhmh',
+		'Mmmhmhm',
+		'Mmmhmhmh'
+	];
+	return greetings[Math.floor(Math.random() * greetings.length)];
+}
+
 export async function updateAgentTools(options: {
 	apiKey: string;
 	agentId: string;
@@ -189,7 +227,14 @@ export async function updateAgentTools(options: {
 }): Promise<void> {
 	try {
 		const toolsArray = makeToolsArray(options.tools ?? []);
+		await options.agent.updateChatlogWithGlobalTranscript();
 
+		console.log(
+			'!!!!!!!!!!!!updating agent tools for',
+			options.agent.getName(),
+			' elevenlabsAgent',
+			options.agentId
+		);
 		const response = await fetch(`https://api.elevenlabs.io/v1/convai/agents/${options.agentId}`, {
 			method: 'PATCH',
 			headers: {
@@ -201,11 +246,11 @@ export async function updateAgentTools(options: {
 				conversation_config: {
 					agent: {
 						prompt: {
-							prompt: options.agent.getSystemPrompt(),
+							prompt: ELEVENLABS_SYSTEM_PROMPT,
 							tools: toolsArray,
 							llm: 'gpt-4o'
 						},
-						first_message: options.firstMessage
+						first_message: options.firstMessage || randomGreeting()
 					},
 					conversation: {
 						client_events: [
